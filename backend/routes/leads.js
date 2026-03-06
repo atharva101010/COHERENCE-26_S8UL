@@ -133,7 +133,7 @@ router.post('/bulk', async (req, res) => {
 // PUT /api/leads/:id - update a lead
 router.put('/:id', async (req, res) => {
   try {
-    const { name, email, company, title, status } = req.body;
+    const { name, email, company, title, status, phone } = req.body;
     const id = Number(req.params.id);
 
     const { data: existing, error: fetchErr } = await supabase
@@ -152,6 +152,7 @@ router.put('/:id', async (req, res) => {
         company: company ?? existing.company,
         title: title ?? existing.title,
         status: status ?? existing.status,
+        phone: phone ?? existing.phone,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
