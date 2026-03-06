@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Search, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
-import axios from 'axios';
 import toast from 'react-hot-toast';
-
-const API_URL = 'http://localhost:3001';
+import { fetchLeads as fetchLeadsFromDB } from '../lib/supabaseService';
 
 const STATUS_COLORS = {
   new: 'bg-indigo-50 text-indigo-600 ring-indigo-500/20',
@@ -14,7 +12,7 @@ const STATUS_COLORS = {
   unsubscribed: 'bg-zinc-50 text-zinc-500 ring-zinc-500/20',
 };
 
-export default function LeadsTable({ refreshTrigger }) {
+export default function LeadsTable({ refreshTrigger }) { // eslint-disable-line react/prop-types
   const [leads, setLeads] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -26,15 +24,12 @@ export default function LeadsTable({ refreshTrigger }) {
   const fetchLeads = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { page, limit: 50 };
-      if (search) params.search = search;
-      if (statusFilter) params.status = statusFilter;
-
-      const res = await axios.get(`${API_URL}/api/leads`, { params });
-      setLeads(res.data.leads);
-      setTotal(res.data.total);
-      setTotalPages(res.data.totalPages);
+      const res = await fetchLeadsFromDB({ search, status: statusFilter, page, limit: 50 });
+      setLeads(res.leads);
+      setTotal(res.total);
+      setTotalPages(res.totalPages);
     } catch (err) {
+      console.error(err);
       toast.error('Failed to fetch leads');
     } finally {
       setLoading(false);

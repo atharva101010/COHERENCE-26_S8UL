@@ -1,16 +1,14 @@
 import { useState, useCallback } from 'react';
 import { Upload, FileSpreadsheet, ArrowRight, Check, AlertCircle, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import axios from 'axios';
 import toast from 'react-hot-toast';
-
-const API_URL = 'http://localhost:3001';
+import { bulkImportLeads, uploadFile, getCurrentUserId } from '../lib/supabaseService';
 
 const REQUIRED_FIELDS = ['name', 'email'];
 const OPTIONAL_FIELDS = ['company', 'title', 'source'];
 const ALL_FIELDS = [...REQUIRED_FIELDS, ...OPTIONAL_FIELDS];
 
-export default function LeadImport({ onImportComplete }) {
+export default function LeadImport({ onImportComplete }) { // eslint-disable-line react/prop-types
   const [step, setStep] = useState(1);
   const [file, setFile] = useState(null);
   const [rawData, setRawData] = useState([]);
@@ -20,37 +18,34 @@ export default function LeadImport({ onImportComplete }) {
   const [importing, setImporting] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
-  const parseFile = useCallback((file) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-      const sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+  const parseFile = useCallback(async (selectedFile) => {
+    const buffer = await selectedFile.arrayBuffer();
+    const data = new Uint8Array(buffer);
+    const workbook = XLSX.read(data, { type: 'array' });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const jsonData = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
-      if (jsonData.length === 0) {
-        toast.error('File is empty or has no data rows');
-        return;
-      }
+    if (jsonData.length === 0) {
+      toast.error('File is empty or has no data rows');
+      return;
+    }
 
-      const fileHeaders = Object.keys(jsonData[0]);
-      setRawData(jsonData);
-      setHeaders(fileHeaders);
-      setFile(file);
+    const fileHeaders = Object.keys(jsonData[0]);
+    setRawData(jsonData);
+    setHeaders(fileHeaders);
+    setFile(selectedFile);
 
-      // Auto-map columns by matching header names
-      const autoMapping = {};
-      for (const field of ALL_FIELDS) {
-        const match = fileHeaders.find(
-          (h) => h.toLowerCase().replace(/[_\s-]/g, '') === field.toLowerCase()
-        );
-        if (match) autoMapping[field] = match;
-      }
-      setMapping(autoMapping);
-      setStep(2);
-    };
-    reader.readAsArrayBuffer(file);
+    // Auto-map columns by matching header names
+    const autoMapping = {};
+    for (const field of ALL_FIELDS) {
+      const match = fileHeaders.find(
+        (h) => h.toLowerCase().replaceAll(/[_\s-]/g, '') === field.toLowerCase()
+      );
+      if (match) autoMapping[field] = match;
+    }
+    setMapping(autoMapping);
+    setStep(2);
   }, []);
 
   const handleDrop = useCallback((e) => {
@@ -90,9 +85,23 @@ export default function LeadImport({ onImportComplete }) {
   const handleImport = async () => {
     setImporting(true);
     try {
-      const response = await axios.post(`${API_URL}/api/leads/bulk`, { leads: preview });
-      const { imported, skipped, total } = response.data;
-      toast.success(`Imported ${imported} of ${total} leads${skipped > 0 ? ` (${skipped} skipped)` : ''}`);
+      // Upload original file to Supabase Storage
+      if (file) {
+        const userId = await getCurrentUserId();
+        const ext = file.name.split('.').pop();
+        const uuid = crypto.randomUUID();
+        const storagePath = `${userId || 'anonymous'}/imports/${uuid}.${ext}`;
+        try {
+          await uploadFile(storagePath, file);
+        } catch (uploadErr) {
+          console.warn('File upload to storage failed, continuing with import:', uploadErr.message);
+        }
+      }
+
+      const response = await bulkImportLeads(preview);
+      const { imported, skipped, total } = response;
+      const skippedMsg = skipped > 0 ? ` (${skipped} skipped)` : '';
+      toast.success(`Imported ${imported} of ${total} leads${skippedMsg}`);
       onImportComplete?.();
       setStep(1);
       setFile(null);
@@ -127,13 +136,11 @@ export default function LeadImport({ onImportComplete }) {
         ].map(({ num, label }, i) => (
           <div key={num} className="flex items-center gap-2">
             <div
-              className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
-                step > num
-                  ? 'bg-gradient-to-br from-emerald-500 to-green-500 text-white shadow-md shadow-green-200'
-                  : step === num
-                  ? 'bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-200'
-                  : 'bg-zinc-100 text-zinc-400'
-              }`}
+              className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-semibold transition-all duration-300 ${(() => {
+                if (step > num) return 'bg-gradient-to-br from-emerald-500 to-green-500 text-white shadow-md shadow-green-200';
+                if (step === num) return 'bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-200';
+                return 'bg-zinc-100 text-zinc-400';
+              })()}`}
             >
               {step > num ? <Check className="w-4 h-4" /> : num}
             </div>
@@ -153,11 +160,11 @@ export default function LeadImport({ onImportComplete }) {
 
       {/* Step 1: File Upload */}
       {step === 1 && (
-        <div
+        <label
           onDrop={handleDrop}
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
-          className={`border-2 border-dashed rounded-2xl p-16 text-center transition-all duration-300 ${
+          className={`block border-2 border-dashed rounded-2xl p-16 text-center transition-all duration-300 cursor-pointer ${
             dragOver
               ? 'border-indigo-400 bg-indigo-50/50 scale-[1.01]'
               : 'border-zinc-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/20'
@@ -172,17 +179,17 @@ export default function LeadImport({ onImportComplete }) {
           <p className="text-sm text-zinc-500 mb-6">
             Supports .csv, .xlsx, and .xls files
           </p>
-          <label className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-medium rounded-xl hover:from-indigo-700 hover:to-violet-700 cursor-pointer transition-all shadow-md shadow-indigo-200 hover:shadow-lg hover:shadow-indigo-300">
+          <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-medium rounded-xl hover:from-indigo-700 hover:to-violet-700 transition-all shadow-md shadow-indigo-200 hover:shadow-lg hover:shadow-indigo-300">
             <FileSpreadsheet className="w-4 h-4" />
             Browse Files
-            <input
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-          </label>
-        </div>
+          </span>
+          <input
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+        </label>
       )}
 
       {/* Step 2: Column Mapping */}
@@ -272,8 +279,8 @@ export default function LeadImport({ onImportComplete }) {
                 </tr>
               </thead>
               <tbody>
-                {preview.slice(0, 10).map((row, i) => (
-                  <tr key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
+                {preview.slice(0, 10).map((row) => (
+                  <tr key={row.email || row.name || JSON.stringify(row)} className="border-b border-zinc-100 hover:bg-zinc-50">
                     {Object.keys(mapping).filter((k) => mapping[k]).map((field) => (
                       <td key={field} className="py-2 px-3 text-zinc-800">
                         {row[field] || '—'}

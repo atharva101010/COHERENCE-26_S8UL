@@ -1,11 +1,12 @@
 import express from 'express';
 import cors from 'cors';
-import { createServer } from 'http';
+import { createServer } from 'node:http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
-import db from './db.js';
 import leadsRouter from './routes/leads.js';
 import statsRouter from './routes/stats.js';
+import workflowsRouter from './routes/workflows.js';
+import credentialsRouter from './routes/credentials.js';
 
 dotenv.config();
 
@@ -34,6 +35,8 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/leads', leadsRouter);
 app.use('/api/stats', statsRouter);
+app.use('/api/workflows', workflowsRouter);
+app.use('/api/credentials', credentialsRouter);
 
 // Socket.io connection
 io.on('connection', (socket) => {

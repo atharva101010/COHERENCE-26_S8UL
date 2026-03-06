@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
+import PropTypes from 'prop-types';
 import { Users, GitBranch, Play, Mail, TrendingUp, ArrowUpRight, ArrowDownRight, RefreshCw } from 'lucide-react';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import axios from 'axios';
-
-const API_URL = 'http://localhost:3001';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { fetchStatsOverview } from '../lib/supabaseService';
 
 const STATUS_COLORS = {
   new: '#6366f1',
@@ -33,7 +32,9 @@ function SkeletonChart() {
   );
 }
 
-function StatCard({ title, value, icon: Icon, iconBg, iconColor, change, changeType }) {
+function StatCard({ title, value, icon: Icon, iconBg, iconColor, change, changeType }) { // eslint-disable-line react/prop-types
+  const changeColorMap = { up: 'text-emerald-600', down: 'text-red-500' };
+  const changeColor = changeColorMap[changeType] || 'text-zinc-400';
   return (
     <div className="bg-white rounded-2xl border border-zinc-200/60 p-6 hover:shadow-md hover:shadow-zinc-200/50 transition-all duration-200">
       <div className="flex items-start justify-between">
@@ -41,9 +42,7 @@ function StatCard({ title, value, icon: Icon, iconBg, iconColor, change, changeT
           <p className="text-sm font-medium text-zinc-500">{title}</p>
           <p className="text-3xl font-bold text-zinc-900 mt-2">{value}</p>
           {change !== undefined && (
-            <div className={`flex items-center gap-1 mt-2 text-xs font-medium ${
-              changeType === 'up' ? 'text-emerald-600' : changeType === 'down' ? 'text-red-500' : 'text-zinc-400'
-            }`}>
+            <div className={`flex items-center gap-1 mt-2 text-xs font-medium ${changeColor}`}>
               {changeType === 'up' && <ArrowUpRight className="w-3 h-3" />}
               {changeType === 'down' && <ArrowDownRight className="w-3 h-3" />}
               <span>{change}</span>
@@ -63,13 +62,23 @@ const CustomTooltip = ({ active, payload, label }) => {
   return (
     <div className="bg-white border border-zinc-200 rounded-xl px-4 py-3 shadow-lg shadow-zinc-200/50">
       <p className="text-xs font-medium text-zinc-500 mb-1">{label}</p>
-      {payload.map((entry, i) => (
-        <p key={i} className="text-sm font-semibold" style={{ color: entry.color }}>
+      {payload.map((entry) => (
+        <p key={entry.name} className="text-sm font-semibold" style={{ color: entry.color }}>
           {entry.name}: {entry.value}
         </p>
       ))}
     </div>
   );
+};
+
+CustomTooltip.propTypes = {
+  active: PropTypes.bool,
+  payload: PropTypes.arrayOf(PropTypes.shape({
+    name: PropTypes.string,
+    value: PropTypes.number,
+    color: PropTypes.string,
+  })),
+  label: PropTypes.string,
 };
 
 export default function Dashboard() {
@@ -78,8 +87,8 @@ export default function Dashboard() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/stats/overview`);
-      setStats(res.data);
+      const data = await fetchStatsOverview();
+      setStats(data);
     } catch {
       // silent fail — dashboard will show skeletons
     } finally {
@@ -194,11 +203,7 @@ export default function Dashboard() {
                 <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#71717a' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 12, fill: '#71717a' }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="value" name="Leads" radius={[6, 6, 0, 0]}>
-                  {statusData.map((entry, i) => (
-                    <Cell key={i} fill={entry.fill} />
-                  ))}
-                </Bar>
+                <Bar dataKey="value" name="Leads" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -255,11 +260,7 @@ export default function Dashboard() {
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-zinc-400">{lead.company || '—'}</span>
                   <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
-                    lead.status === 'new' ? 'bg-indigo-50 text-indigo-600' :
-                    lead.status === 'contacted' ? 'bg-amber-50 text-amber-600' :
-                    lead.status === 'replied' ? 'bg-green-50 text-green-600' :
-                    lead.status === 'converted' ? 'bg-emerald-50 text-emerald-600' :
-                    'bg-zinc-100 text-zinc-600'
+                    { new: 'bg-indigo-50 text-indigo-600', contacted: 'bg-amber-50 text-amber-600', replied: 'bg-green-50 text-green-600', converted: 'bg-emerald-50 text-emerald-600' }[lead.status] || 'bg-zinc-100 text-zinc-600'
                   }`}>
                     {lead.status}
                   </span>

@@ -20,7 +20,6 @@ const pageDescriptions = {
 export default function Header() {
   const location = useLocation();
   const title = pageTitles[location.pathname] || 'FlowReach AI';
-  const description = pageDescriptions[location.pathname] || '';
 
   return (
     <header className="h-16 bg-white/80 backdrop-blur-sm border-b border-zinc-200/60 flex items-center justify-between px-6 sticky top-0 z-10">
