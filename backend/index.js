@@ -4,6 +4,8 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
 import db from './db.js';
+import leadsRouter from './routes/leads.js';
+import statsRouter from './routes/stats.js';
 
 dotenv.config();
 
@@ -28,6 +30,10 @@ app.set('io', io);
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// API routes
+app.use('/api/leads', leadsRouter);
+app.use('/api/stats', statsRouter);
 
 // Socket.io connection
 io.on('connection', (socket) => {
