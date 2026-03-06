@@ -167,6 +167,9 @@ export class WorkflowExecutor {
         case 'whatsappNode':
           await this.handleWhatsApp(node);
           break;
+        case 'callNode':
+          await this.handleCall(node);
+          break;
         case 'webhookNode':
           this.log('info', `Webhook node "${label}" — skipped in manual execution`);
           break;
@@ -702,6 +705,134 @@ export class WorkflowExecutor {
         type: 'whatsapp',
         subject: 'WhatsApp Message',
         body,
+        status: 'failed',
+      });
+    }
+  }
+
+  async handleCall(node) {
+    const { to, callMessage, voiceName } = node.data || {};
+    const msg = this.context.generatedMessage;
+
+    // Build the spoken message
+    let spokenText;
+    if (callMessage) {
+      spokenText = replaceVariables(callMessage, this.context.lead);
+    } else if (msg?.body) {
+      // Strip HTML for voice
+      spokenText = msg.body.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+    } else {
+      spokenText = `Hello ${this.lead.name}. This is an automated call from FlowReach AI on behalf of ${this.lead.company || 'your contact'}. We would love to connect with you to discuss how we can help your business. Please check your email for more details. Thank you and have a great day!`;
+    }
+
+    // Resolve recipient phone number
+    const recipientPhone = replaceVariables(to || '', this.context.lead) || this.lead.phone;
+
+    if (!recipientPhone) {
+      this.log('warn', 'Call node: No phone number for lead — skipping');
+      await supabase.from('messages').insert({
+        lead_id: this.lead.id,
+        execution_id: this.executionId,
+        type: 'call',
+        subject: 'Automated Call',
+        body: spokenText,
+        status: 'failed',
+      });
+      return;
+    }
+
+    // Check blacklist
+    const { data: blocked } = await supabase
+      .from('blacklist')
+      .select('id')
+      .eq('email', this.lead.email)
+      .maybeSingle();
+
+    if (blocked) {
+      this.log('warn', `Call to ${recipientPhone} BLOCKED — lead is blacklisted`);
+      await supabase.from('messages').insert({
+        lead_id: this.lead.id,
+        execution_id: this.executionId,
+        type: 'call',
+        subject: 'Automated Call',
+        body: spokenText,
+        status: 'blocked',
+      });
+      return;
+    }
+
+    // Get Twilio credentials
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const fromNumber = process.env.TWILIO_PHONE_FROM;
+
+    if (!accountSid || !authToken || !fromNumber) {
+      // Check credentials table as fallback
+      const { data: twilioCred } = await supabase
+        .from('credentials')
+        .select('*')
+        .eq('type', 'twilio')
+        .limit(1)
+        .maybeSingle();
+
+      if (!twilioCred) {
+        this.log('warn', 'No Twilio credentials configured — Call simulated');
+        this.log('info', `Call (simulated) to ${recipientPhone}: "${spokenText.substring(0, 120)}..."`);
+        await supabase.from('messages').insert({
+          lead_id: this.lead.id,
+          execution_id: this.executionId,
+          type: 'call',
+          subject: 'Automated Call (Simulated)',
+          body: spokenText,
+          status: 'sent',
+        });
+        await supabase.from('leads').update({ status: 'contacted', updated_at: new Date().toISOString() }).eq('id', this.lead.id);
+        return;
+      }
+
+      const config = typeof twilioCred.config === 'string' ? JSON.parse(twilioCred.config) : twilioCred.config || {};
+      return await this._makeCall(config.accountSid, config.authToken, config.phoneFrom, recipientPhone, spokenText, voiceName);
+    }
+
+    await this._makeCall(accountSid, authToken, fromNumber, recipientPhone, spokenText, voiceName);
+  }
+
+  async _makeCall(accountSid, authToken, fromNumber, toNumber, spokenText, voiceName) {
+    try {
+      const client = twilio(accountSid, authToken);
+
+      // Build TwiML for text-to-speech
+      const voice = voiceName || 'Polly.Joanna'; // AWS Polly neural voice
+      const twiml = `<Response><Say voice="${voice}">${spokenText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</Say><Pause length="1"/><Say voice="${voice}">Goodbye!</Say></Response>`;
+
+      const call = await client.calls.create({
+        from: fromNumber,
+        to: toNumber,
+        twiml,
+      });
+
+      this.log('info', `Call initiated to ${toNumber} — SID: ${call.sid}`);
+
+      // Store call record
+      await supabase.from('messages').insert({
+        lead_id: this.lead.id,
+        execution_id: this.executionId,
+        type: 'call',
+        subject: 'Automated Call',
+        body: spokenText,
+        status: 'sent',
+      });
+
+      // Update lead status
+      await supabase.from('leads').update({ status: 'contacted', updated_at: new Date().toISOString() }).eq('id', this.lead.id);
+    } catch (err) {
+      this.log('error', `Call failed: ${err.message}`);
+      await supabase.from('messages').insert({
+        lead_id: this.lead.id,
+        execution_id: this.executionId,
+        type: 'call',
+        subject: 'Automated Call',
+        body: spokenText,
         status: 'failed',
       });
     }
