@@ -7,6 +7,7 @@ import leadsRouter from './routes/leads.js';
 import statsRouter from './routes/stats.js';
 import workflowsRouter from './routes/workflows.js';
 import credentialsRouter from './routes/credentials.js';
+import aiRouter from './routes/ai.js';
 
 dotenv.config();
 
@@ -37,6 +38,7 @@ app.use('/api/leads', leadsRouter);
 app.use('/api/stats', statsRouter);
 app.use('/api/workflows', workflowsRouter);
 app.use('/api/credentials', credentialsRouter);
+app.use('/api/ai', aiRouter);
 
 // Socket.io connection
 io.on('connection', (socket) => {

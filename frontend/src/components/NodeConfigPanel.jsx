@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import {
   X, Play, Sparkles, Mail, Clock, GitBranch, UserCheck, Square,
   Globe, Webhook, Bot, Code, Filter, Merge, Split, CalendarClock,
-  FileText, Tags, MessageSquare, Smartphone, Key
+  FileText, Tags, MessageSquare, Smartphone, Key, Eye
 } from 'lucide-react';
 import { fetchCredentials } from '../lib/supabaseService';
+import AIPreviewModal from './AIPreviewModal';
 
 const nodeIcons = {
   startNode: { icon: Play, bgClass: 'bg-emerald-500', headerBg: 'from-emerald-50 to-emerald-100', label: 'Start Node' },
@@ -48,13 +49,14 @@ const aiProviders = {
 };
 
 export default function NodeConfigPanel({ node, onClose, onUpdate }) {
-  if (!node) return null;
-
   const [credentials, setCredentials] = useState([]);
+  const [showAIPreview, setShowAIPreview] = useState(false);
 
   useEffect(() => {
     fetchCredentials().then(creds => setCredentials(creds || [])).catch(() => {});
   }, []);
+
+  if (!node) return null;
 
   const config = nodeIcons[node.type] || { icon: Play, bgClass: 'bg-zinc-500', headerBg: 'from-zinc-50 to-zinc-100', label: 'Node' };
   const Icon = config.icon;
@@ -132,6 +134,13 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
               <label className={labelClass}>Max Length (words)</label>
               <input type="number" value={node.data.maxLength || 200} onChange={(e) => updateData('maxLength', Number(e.target.value))} min={50} max={500} className={inputClass} />
             </div>
+            <button
+              onClick={() => setShowAIPreview(true)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-600 hover:to-indigo-700 rounded-lg shadow-md shadow-violet-200 transition-all"
+            >
+              <Eye className="w-4 h-4" />
+              Preview AI Messages
+            </button>
           </>
         )}
 
@@ -599,6 +608,13 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
           </>
         )}
       </div>
+
+      {/* AI Preview Modal */}
+      <AIPreviewModal
+        isOpen={showAIPreview}
+        onClose={() => setShowAIPreview(false)}
+        nodeData={node.data}
+      />
     </div>
   );
 }

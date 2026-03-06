@@ -572,3 +572,35 @@ export async function getCurrentUserId() {
   const { data: { user } } = await supabase.auth.getUser();
   return user?.id ?? null;
 }
+
+// ──────────────────────────────────────────────
+// AI MESSAGE GENERATION
+// ──────────────────────────────────────────────
+
+const API_BASE = 'http://localhost:3001';
+
+export async function generateAIMessage({ leadId, prompt, tone, maxLength, credentialId, model, lead }) {
+  const res = await fetch(`${API_BASE}/api/ai/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ leadId, prompt, tone, maxLength, credentialId, model, lead }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Failed to generate AI message');
+  }
+  return res.json();
+}
+
+export async function previewAIMessages({ prompt, tone, maxLength, credentialId, model, leadIds }) {
+  const res = await fetch(`${API_BASE}/api/ai/preview`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, tone, maxLength, credentialId, model, leadIds }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Failed to preview AI messages');
+  }
+  return res.json();
+}
