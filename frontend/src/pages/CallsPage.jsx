@@ -177,8 +177,8 @@ export default function CallsPage() {
           </div>
         ) : (
           <div className="divide-y divide-zinc-100 max-h-96 overflow-y-auto">
-            {history.map((record) => (
-              <div key={record.id} className="p-4 hover:bg-zinc-50 transition-colors">
+            {history.map((record, idx) => (
+              <div key={record.leadId + '-' + idx} className="p-4 hover:bg-zinc-50 transition-colors">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-1.5 bg-indigo-50 rounded-lg">
@@ -186,17 +186,16 @@ export default function CallsPage() {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-zinc-900">
-                        {record.leads?.name || 'Unknown'}
-                        <span className="text-zinc-400 font-normal ml-2">{record.leads?.company}</span>
+                        {record.name}
+                        <span className="text-zinc-400 font-normal ml-2">{record.company}</span>
                       </p>
-                      <p className="text-xs text-zinc-500 mt-0.5 line-clamp-1">{record.body?.substring(0, 100)}...</p>
+                      <p className="text-xs text-zinc-400 mt-0.5">📞 {record.phone}</p>
+                      <p className="text-xs text-zinc-500 mt-0.5 line-clamp-1">{record.script?.substring(0, 100)}...</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      record.status === 'sent' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                    }`}>{record.status}</span>
-                    <span className="text-xs text-zinc-400">{new Date(record.created_at).toLocaleTimeString()}</span>
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">{record.status}</span>
+                    <span className="text-xs text-zinc-400">{new Date(record.timestamp).toLocaleTimeString()}</span>
                   </div>
                 </div>
               </div>
