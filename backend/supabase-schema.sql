@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS executions (
 
 CREATE TABLE IF NOT EXISTS messages (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  execution_id BIGINT NOT NULL REFERENCES executions(id),
+  execution_id BIGINT REFERENCES executions(id),
   lead_id BIGINT NOT NULL REFERENCES leads(id),
   type TEXT DEFAULT 'email' CHECK (type IN ('email','sms','linkedin','whatsapp','call')),
   subject TEXT,

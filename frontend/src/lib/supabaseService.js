@@ -732,3 +732,49 @@ export async function resetSeedData() {
   if (!res.ok) throw new Error('Failed to reset demo data');
   return res.json();
 }
+
+// ──────────────────────────────────────────────
+// CALLS
+// ──────────────────────────────────────────────
+
+export async function autoCallLeads({ message, status_filter, limit } = {}) {
+  const res = await fetch(`${API_BASE}/api/calls/auto`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, status_filter, limit }),
+  });
+  if (!res.ok) throw new Error('Failed to auto-call leads');
+  return res.json();
+}
+
+export async function callLead(leadId, message) {
+  const res = await fetch(`${API_BASE}/api/calls/${leadId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
+  });
+  if (!res.ok) throw new Error('Failed to call lead');
+  return res.json();
+}
+
+export async function fetchCallHistory() {
+  const res = await fetch(`${API_BASE}/api/calls/history`);
+  if (!res.ok) throw new Error('Failed to fetch call history');
+  return res.json();
+}
+
+export async function fetchCallStats() {
+  const res = await fetch(`${API_BASE}/api/calls/stats`);
+  if (!res.ok) throw new Error('Failed to fetch call stats');
+  return res.json();
+}
+
+// ──────────────────────────────────────────────
+// WHATSAPP
+// ──────────────────────────────────────────────
+
+export async function fetchWhatsAppStatus() {
+  const res = await fetch(`${API_BASE}/api/whatsapp/status`);
+  if (!res.ok) throw new Error('Failed to fetch WhatsApp status');
+  return res.json();
+}

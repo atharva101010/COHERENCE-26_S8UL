@@ -10,6 +10,7 @@ import credentialsRouter from './routes/credentials.js';
 import aiRouter from './routes/ai.js';
 import executionsRouter from './routes/executions.js';
 import settingsRouter from './routes/settings.js';
+import callsRouter from './routes/calls.js';
 import whatsappService from './whatsapp.js';
 
 dotenv.config();
@@ -53,6 +54,7 @@ app.use('/api/credentials', credentialsRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/executions', executionsRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/calls', callsRouter);
 
 // POST /api/seed/reset — Reset demo data by re-running seed
 app.post('/api/seed/reset', async (req, res) => {
