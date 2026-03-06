@@ -56,7 +56,6 @@ export default function AppLayout() {
 
       {/* Help Modal */}
       {showHelp && (
-        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
         <div
           className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50"
           onClick={() => setShowHelp(false)}
@@ -65,7 +64,6 @@ export default function AppLayout() {
           role="button"
           aria-label="Close keyboard shortcuts"
         >
-          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
           <div
             className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4"
             onClick={e => e.stopPropagation()}
