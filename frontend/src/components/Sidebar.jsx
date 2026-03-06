@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Home, MessageSquare, BarChart2, Workflow, Users, Settings, Bell, CircleUser, ChevronRight } from 'lucide-react';
+import { Home, MessageSquare, BarChart2, Workflow, Users, Settings, Bell, CircleUser, ChevronRight, PhoneCall } from 'lucide-react';
 
 const navItems = [
   { section: 'Overview', items: [
@@ -12,6 +12,7 @@ const navItems = [
     { name: 'Messages', icon: MessageSquare, path: '/messages', badge: '12' },
     { name: 'Workflows', icon: Workflow, path: '/workflows', badge: null },
     { name: 'Leads', icon: Users, path: '/leads', badge: null },
+    { name: 'Auto Calls', icon: PhoneCall, path: '/calls', badge: 'NEW' },
   ]},
   { section: 'Metrics', items: [
     { name: 'Settings', icon: Settings, path: '/settings', badge: null },

@@ -8,6 +8,7 @@ import WorkflowBuilder from './pages/WorkflowBuilder';
 import Executions from './pages/Executions';
 import Settings from './pages/Settings';
 import AIChat from './pages/AIChat';
+import CallsPage from './pages/CallsPage';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
         <Route path="/executions" element={<Executions />} />
         <Route path="/ai" element={<AIChat />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/calls" element={<CallsPage />} />
       </Route>
       <Route path="/workflows/:id" element={<WorkflowBuilder />} />
     </Routes>
