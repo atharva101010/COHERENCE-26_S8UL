@@ -9,6 +9,7 @@ import workflowsRouter from './routes/workflows.js';
 import credentialsRouter from './routes/credentials.js';
 import aiRouter from './routes/ai.js';
 import executionsRouter from './routes/executions.js';
+import settingsRouter from './routes/settings.js';
 
 dotenv.config();
 
@@ -41,6 +42,18 @@ app.use('/api/workflows', workflowsRouter);
 app.use('/api/credentials', credentialsRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/executions', executionsRouter);
+app.use('/api/settings', settingsRouter);
+
+// POST /api/seed/reset — Reset demo data by re-running seed
+app.post('/api/seed/reset', async (req, res) => {
+  try {
+    const { seed } = await import('./seed.js');
+    await seed();
+    res.json({ success: true, message: 'Demo data reset successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to reset demo data: ' + err.message });
+  }
+});
 
 // Socket.io connection
 io.on('connection', (socket) => {

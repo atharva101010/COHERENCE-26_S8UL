@@ -150,25 +150,7 @@ router.post('/create-workflow', async (req, res) => {
 
     let nodes, edges, name;
 
-    if (!apiKey) {
-      // Mock: return a simple workflow
-      name = 'AI-Generated: ' + description.substring(0, 40);
-      nodes = [
-        { id: 'start-1', type: 'startNode', position: { x: 250, y: 50 }, data: { label: 'Start', trigger: 'manual' } },
-        { id: 'ai-1', type: 'aiGenerateNode', position: { x: 250, y: 200 }, data: { label: 'AI Generate', prompt: `Based on: ${description}. Write a personalized email to {{name}} at {{company}}.`, tone: 'professional', maxLength: 200 } },
-        { id: 'email-1', type: 'emailNode', position: { x: 250, y: 350 }, data: { label: 'Send Email', subject: 'Hello {{name}}', fromName: 'FlowReach AI' } },
-        { id: 'delay-1', type: 'delayNode', position: { x: 250, y: 500 }, data: { label: 'Wait 2 Days', duration: 2, unit: 'days' } },
-        { id: 'update-1', type: 'updateLeadNode', position: { x: 250, y: 650 }, data: { label: 'Mark Contacted', status: 'contacted' } },
-        { id: 'end-1', type: 'endNode', position: { x: 250, y: 800 }, data: { label: 'End' } },
-      ];
-      edges = [
-        { id: 'e1', source: 'start-1', target: 'ai-1' },
-        { id: 'e2', source: 'ai-1', target: 'email-1' },
-        { id: 'e3', source: 'email-1', target: 'delay-1' },
-        { id: 'e4', source: 'delay-1', target: 'update-1' },
-        { id: 'e5', source: 'update-1', target: 'end-1' },
-      ];
-    } else {
+    if (apiKey) {
       const groq = new Groq({ apiKey });
 
       const systemPrompt = `You are a workflow generator for FlowReach AI, a lead outreach automation platform.
@@ -207,19 +189,37 @@ No markdown, no code fences, no explanation.`;
       const raw = completion.choices[0]?.message?.content || '';
       let parsed;
       try {
-        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+        const jsonMatch = /\{[\s\S]*\}/.exec(raw);
         parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
       } catch {
         parsed = null;
       }
 
-      if (!parsed || !parsed.nodes) {
+      if (!parsed?.nodes) {
         return res.status(500).json({ error: 'AI failed to generate a valid workflow. Try a different description.' });
       }
 
       name = parsed.name || 'AI-Generated Workflow';
       nodes = parsed.nodes;
       edges = parsed.edges || [];
+    } else {
+      // Mock: return a simple workflow
+      name = 'AI-Generated: ' + description.substring(0, 40);
+      nodes = [
+        { id: 'start-1', type: 'startNode', position: { x: 250, y: 50 }, data: { label: 'Start', trigger: 'manual' } },
+        { id: 'ai-1', type: 'aiGenerateNode', position: { x: 250, y: 200 }, data: { label: 'AI Generate', prompt: `Based on: ${description}. Write a personalized email to {{name}} at {{company}}.`, tone: 'professional', maxLength: 200 } },
+        { id: 'email-1', type: 'emailNode', position: { x: 250, y: 350 }, data: { label: 'Send Email', subject: 'Hello {{name}}', fromName: 'FlowReach AI' } },
+        { id: 'delay-1', type: 'delayNode', position: { x: 250, y: 500 }, data: { label: 'Wait 2 Days', duration: 2, unit: 'days' } },
+        { id: 'update-1', type: 'updateLeadNode', position: { x: 250, y: 650 }, data: { label: 'Mark Contacted', status: 'contacted' } },
+        { id: 'end-1', type: 'endNode', position: { x: 250, y: 800 }, data: { label: 'End' } },
+      ];
+      edges = [
+        { id: 'e1', source: 'start-1', target: 'ai-1' },
+        { id: 'e2', source: 'ai-1', target: 'email-1' },
+        { id: 'e3', source: 'email-1', target: 'delay-1' },
+        { id: 'e4', source: 'delay-1', target: 'update-1' },
+        { id: 'e5', source: 'update-1', target: 'end-1' },
+      ];
     }
 
     // Save to DB

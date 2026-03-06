@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { Activity, MessageSquare, Workflow, Calendar, Link as LinkIcon, Flag, LayoutGrid, Search, Maximize2, MoreVertical, PenLine, Filter } from 'lucide-react';
+import { Activity, MessageSquare, Workflow, Calendar, Link as LinkIcon, Flag, LayoutGrid, Search, Maximize2, MoreVertical, PenLine, Filter, RefreshCw } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, ResponsiveContainer, YAxis, Tooltip, XAxis } from 'recharts';
 import { fetchStatsOverview, fetchLeads } from '../lib/supabaseService';
 
@@ -11,6 +11,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -20,6 +21,7 @@ export default function Dashboard() {
       ]);
       setStats(statsData);
       setLeads(leadsData.leads);
+      setLastUpdated(new Date());
     } catch {
       // quiet fail
     } finally {
@@ -61,7 +63,14 @@ export default function Dashboard() {
              <input type="text" placeholder="Search" className="pl-8 pr-4 py-1.5 text-sm rounded-lg border border-border bg-muted/50 w-48 focus:outline-none focus:ring-1 focus:ring-primary text-foreground placeholder-muted-foreground" />
              <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground font-medium px-1 border border-border rounded">⌘F</div>
            </div>
-           <Button variant="ghost" size="sm" className="hidden sm:flex text-muted-foreground gap-2 font-medium hover:text-foreground">Manage</Button>
+           {lastUpdated && (
+             <span className="text-xs text-muted-foreground">
+               Updated {lastUpdated.toLocaleTimeString()}
+             </span>
+           )}
+           <Button variant="ghost" size="sm" className="text-muted-foreground gap-2 font-medium hover:text-foreground" onClick={fetchData}>
+             <RefreshCw size={14} /> Refresh
+           </Button>
            <Button variant="ghost" size="sm" className="hidden sm:flex text-muted-foreground gap-2 font-medium hover:text-foreground"><LinkIcon size={14}/> Share</Button>
            <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm">Create lead</Button>
         </div>

@@ -27,6 +27,28 @@ router.post('/run', async (req, res) => {
       return res.status(404).json({ error: 'Workflow not found' });
     }
 
+    // Validate workflow has nodes and a start node
+    const nodes = typeof workflow.nodes === 'string' ? JSON.parse(workflow.nodes) : workflow.nodes || [];
+    const edges = typeof workflow.edges === 'string' ? JSON.parse(workflow.edges) : workflow.edges || [];
+
+    if (nodes.length === 0) {
+      return res.status(400).json({ error: 'Workflow has no nodes. Add at least a Start and End node.' });
+    }
+
+    const hasStart = nodes.some(n => n.type === 'startNode');
+    if (!hasStart) {
+      return res.status(400).json({ error: 'Workflow is missing a Start node.' });
+    }
+
+    const hasEnd = nodes.some(n => n.type === 'endNode');
+    if (!hasEnd) {
+      return res.status(400).json({ error: 'Workflow is missing an End node. Add one to complete the flow.' });
+    }
+
+    if (edges.length === 0 && nodes.length > 1) {
+      return res.status(400).json({ error: 'Workflow nodes are not connected. Draw edges between nodes.' });
+    }
+
     // Fetch leads
     const { data: leads, error: leadError } = await supabase
       .from('leads')

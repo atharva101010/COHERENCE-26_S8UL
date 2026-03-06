@@ -113,66 +113,71 @@ export class WorkflowExecutor {
     await this.updateExecution({ current_node: label });
     this.emitStatus('running', label);
 
-    switch (node.type) {
-      case 'startNode':
-        await this.handleStart(node);
-        break;
-      case 'aiGenerateNode':
-        await this.handleAIGenerate(node);
-        break;
-      case 'emailNode':
-        await this.handleEmail(node);
-        break;
-      case 'delayNode':
-        await this.handleDelay(node);
-        break;
-      case 'conditionNode':
-        await this.handleCondition(node);
-        return; // condition handles its own branching
-      case 'updateLeadNode':
-        await this.handleUpdateLead(node);
-        break;
-      case 'endNode':
-        this.log('info', 'Reached end node — workflow complete');
-        return;
-      case 'aiAgentNode':
-        await this.handleAIAgent(node);
-        break;
-      case 'filterNode':
-        await this.handleFilter(node);
-        break;
-      case 'splitNode':
-        await this.handleSplit(node);
-        return; // split handles its own branching
-      case 'httpRequestNode':
-        await this.handleHttpRequest(node);
-        break;
-      case 'codeNode':
-        await this.handleCode(node);
-        break;
-      case 'summarizerNode':
-        await this.handleSummarizer(node);
-        break;
-      case 'classifierNode':
-        await this.handleClassifier(node);
-        break;
-      case 'slackNode':
-        await this.handleSlack(node);
-        break;
-      case 'smsNode':
-        await this.handleSms(node);
-        break;
-      case 'webhookNode':
-        this.log('info', `Webhook node "${label}" — skipped in manual execution`);
-        break;
-      case 'scheduleNode':
-        this.log('info', `Schedule node "${label}" — skipped in manual execution`);
-        break;
-      case 'mergeNode':
-        this.log('info', `Merge node "${label}" — pass-through`);
-        break;
-      default:
-        this.log('warn', `Unknown node type: ${node.type} — skipping`);
+    try {
+      switch (node.type) {
+        case 'startNode':
+          await this.handleStart(node);
+          break;
+        case 'aiGenerateNode':
+          await this.handleAIGenerate(node);
+          break;
+        case 'emailNode':
+          await this.handleEmail(node);
+          break;
+        case 'delayNode':
+          await this.handleDelay(node);
+          break;
+        case 'conditionNode':
+          await this.handleCondition(node);
+          return; // condition handles its own branching
+        case 'updateLeadNode':
+          await this.handleUpdateLead(node);
+          break;
+        case 'endNode':
+          this.log('info', 'Reached end node — workflow complete');
+          return;
+        case 'aiAgentNode':
+          await this.handleAIAgent(node);
+          break;
+        case 'filterNode':
+          await this.handleFilter(node);
+          break;
+        case 'splitNode':
+          await this.handleSplit(node);
+          return; // split handles its own branching
+        case 'httpRequestNode':
+          await this.handleHttpRequest(node);
+          break;
+        case 'codeNode':
+          await this.handleCode(node);
+          break;
+        case 'summarizerNode':
+          await this.handleSummarizer(node);
+          break;
+        case 'classifierNode':
+          await this.handleClassifier(node);
+          break;
+        case 'slackNode':
+          await this.handleSlack(node);
+          break;
+        case 'smsNode':
+          await this.handleSms(node);
+          break;
+        case 'webhookNode':
+          this.log('info', `Webhook node "${label}" — skipped in manual execution`);
+          break;
+        case 'scheduleNode':
+          this.log('info', `Schedule node "${label}" — skipped in manual execution`);
+          break;
+        case 'mergeNode':
+          this.log('info', `Merge node "${label}" — pass-through`);
+          break;
+        default:
+          this.log('warn', `Unknown node type: ${node.type} — skipping`);
+      }
+    } catch (nodeErr) {
+      this.log('error', `Node "${label}" failed: ${nodeErr.message}`, node.id);
+      // Continue to next nodes instead of crashing the entire workflow
     }
 
     // Move to next node(s)
@@ -269,7 +274,7 @@ export class WorkflowExecutor {
       .maybeSingle();
 
     const currentCount = dailyCount?.count || 0;
-    const dailyLimit = parseInt(process.env.DAILY_SEND_LIMIT || '50', 10);
+    const dailyLimit = Number.parseInt(process.env.DAILY_SEND_LIMIT || '50', 10);
 
     if (currentCount >= dailyLimit) {
       this.log('warn', `Daily send limit (${dailyLimit}) reached — email not sent`);
@@ -291,7 +296,7 @@ export class WorkflowExecutor {
         from: `"${senderName}" <${process.env.SMTP_FROM || process.env.SMTP_USER || 'flowreach@example.com'}>`,
         to: this.lead.email,
         subject: finalSubject,
-        html: finalBody.replace(/\n/g, '<br>'),
+        html: finalBody.replaceAll('\n', '<br>'),
       };
 
       await transporter.sendMail(mailOptions);
@@ -333,7 +338,7 @@ export class WorkflowExecutor {
   async getEmailTransporter() {
     // Try to get SMTP credentials from env
     const host = process.env.SMTP_HOST;
-    const port = parseInt(process.env.SMTP_PORT || '587', 10);
+    const port = Number.parseInt(process.env.SMTP_PORT || '587', 10);
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
 
@@ -359,8 +364,8 @@ export class WorkflowExecutor {
       if (config.host && config.user && config.pass) {
         return nodemailer.createTransport({
           host: config.host,
-          port: parseInt(config.port || '587', 10),
-          secure: parseInt(config.port || '587', 10) === 465,
+          port: Number.parseInt(config.port || '587', 10),
+          secure: Number.parseInt(config.port || '587', 10) === 465,
           auth: { user: config.user, pass: config.pass },
         });
       }
@@ -403,8 +408,8 @@ export class WorkflowExecutor {
       case 'equals': result = leadValue === compareValue; break;
       case 'not_equals': result = leadValue !== compareValue; break;
       case 'contains': result = leadValue.includes(compareValue); break;
-      case 'greater_than': result = parseFloat(leadValue) > parseFloat(compareValue); break;
-      case 'less_than': result = parseFloat(leadValue) < parseFloat(compareValue); break;
+      case 'greater_than': result = Number.parseFloat(leadValue) > Number.parseFloat(compareValue); break;
+      case 'less_than': result = Number.parseFloat(leadValue) < Number.parseFloat(compareValue); break;
       default: result = leadValue === compareValue;
     }
 
@@ -446,7 +451,7 @@ export class WorkflowExecutor {
   }
 
   async handleAIAgent(node) {
-    const { systemPrompt, userPrompt, model } = node.data || {};
+    const { userPrompt, model } = node.data || {};
     const filledPrompt = replaceVariables(userPrompt || 'Analyze lead: {{name}} at {{company}}', this.context.lead);
 
     this.log('info', `Running AI Agent (model: ${model || 'llama-3.3-70b-versatile'})...`);

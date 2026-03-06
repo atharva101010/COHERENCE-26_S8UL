@@ -1,5 +1,6 @@
+import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Bell, Search, Sparkles } from 'lucide-react';
+import { Bell, Search, Sparkles, Wifi, WifiOff } from 'lucide-react';
 
 const pageTitles = {
   '/': 'Dashboard',
@@ -7,6 +8,7 @@ const pageTitles = {
   '/workflows': 'Workflows',
   '/executions': 'Executions',
   '/settings': 'Settings',
+  '/ai': 'AI Assistant',
 };
 
 const pageDescriptions = {
@@ -15,11 +17,25 @@ const pageDescriptions = {
   '/workflows': 'Build automation workflows',
   '/executions': 'Monitor workflow executions',
   '/settings': 'Configure your preferences',
+  '/ai': 'Chat with your AI assistant',
 };
 
 export default function Header() {
   const location = useLocation();
   const title = pageTitles[location.pathname] || 'FlowReach AI';
+  const [online, setOnline] = useState(true);
+
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const r = await fetch('http://localhost:3001/health', { signal: AbortSignal.timeout(3000) });
+        setOnline(r.ok);
+      } catch { setOnline(false); }
+    };
+    check();
+    const id = setInterval(check, 15000);
+    return () => clearInterval(id);
+  }, []);
 
   return (
     <header className="h-16 bg-white/80 backdrop-blur-sm border-b border-zinc-200/60 flex items-center justify-between px-6 sticky top-0 z-10">
@@ -28,6 +44,14 @@ export default function Header() {
       </div>
 
       <div className="flex items-center gap-3">
+        {/* System Status */}
+        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${
+          online ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
+        }`}>
+          {online ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+          {online ? 'Online' : 'Offline'}
+        </div>
+
         <div className="relative">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
           <input
