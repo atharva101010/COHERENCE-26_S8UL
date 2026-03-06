@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS leads (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   name TEXT NOT NULL,
   email TEXT NOT NULL,
+  phone TEXT,
   company TEXT,
   title TEXT,
   status TEXT DEFAULT 'new' CHECK (status IN ('new','contacted','replied','converted','bounced','unsubscribed')),
@@ -41,10 +42,10 @@ CREATE TABLE IF NOT EXISTS messages (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   execution_id BIGINT NOT NULL REFERENCES executions(id),
   lead_id BIGINT NOT NULL REFERENCES leads(id),
-  type TEXT DEFAULT 'email' CHECK (type IN ('email','sms','linkedin')),
+  type TEXT DEFAULT 'email' CHECK (type IN ('email','sms','linkedin','whatsapp')),
   subject TEXT,
   body TEXT,
-  status TEXT DEFAULT 'draft' CHECK (status IN ('draft','sent','delivered','opened','bounced','failed')),
+  status TEXT DEFAULT 'draft' CHECK (status IN ('draft','sent','delivered','opened','bounced','failed','blocked','rate_limited')),
   sent_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now()
 );
