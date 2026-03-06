@@ -79,20 +79,20 @@ export default function Sidebar() {
       {/* Bottom Profile Area */}
       <div className="p-4 mt-auto">
          <Separator className="mb-4 bg-sidebar-border" />
-         <div className="flex items-center justify-between px-2 py-1">
+         <Link to="/profile" className="flex items-center justify-between px-2 py-2 rounded-lg hover:bg-sidebar-accent/50 transition-all duration-200 group">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-sidebar-accent border border-sidebar-border flex items-center justify-center text-sidebar-foreground shadow-sm">
+              <div className="w-9 h-9 rounded-full bg-sidebar-accent border border-sidebar-border flex items-center justify-center text-sidebar-foreground shadow-sm group-hover:border-primary/30 transition-colors">
                 <CircleUser size={18} />
               </div>
               <div className="flex flex-col">
-                <span className="text-sm font-semibold text-sidebar-foreground">Kamlesh</span>
-                <span className="text-[11px] font-medium text-sidebar-foreground/50">Pro Plan</span>
+                <span className="text-sm font-semibold text-sidebar-foreground group-hover:text-primary transition-colors">My Profile</span>
+                <span className="text-[11px] font-medium text-sidebar-foreground/50">View & edit profile</span>
               </div>
             </div>
             <div className="flex items-center gap-1.5 text-sidebar-foreground/50">
                <Bell size={16} className="hover:text-sidebar-foreground cursor-pointer transition-colors" />
             </div>
-         </div>
+         </Link>
       </div>
     </aside>
   );

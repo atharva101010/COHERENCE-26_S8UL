@@ -14,6 +14,7 @@ import executionsRouter from './routes/executions.js';
 import settingsRouter from './routes/settings.js';
 import messagesRouter from './routes/messages.js';
 import channelsRouter from './routes/channels.js';
+import profileRouter from './routes/profile.js';
 
 dotenv.config();
 
@@ -53,6 +54,7 @@ app.use('/api/executions', executionsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/messages', messagesRouter);
 app.use('/api/channels', channelsRouter);
+app.use('/api/profile', profileRouter);
 
 // POST /api/seed/reset — Reset demo data by re-running seed
 app.post('/api/seed/reset', async (req, res) => {

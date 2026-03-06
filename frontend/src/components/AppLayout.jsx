@@ -10,6 +10,7 @@ const shortcuts = [
   { key: 'E', label: 'Executions', path: '/executions' },
   { key: 'S', label: 'Settings', path: '/settings' },
   { key: 'A', label: 'AI Assistant', path: '/ai' },
+  { key: 'P', label: 'Profile', path: '/profile' },
   { key: '?', label: 'Show this help', path: null },
 ];
 

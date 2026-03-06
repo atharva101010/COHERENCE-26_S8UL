@@ -10,6 +10,7 @@ import Settings from './pages/Settings';
 import AIChat from './pages/AIChat';
 import Messages from './pages/Messages';
 import Channels from './pages/Channels';
+import Profile from './pages/Profile';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
         <Route path="/channels" element={<Channels />} />
         <Route path="/ai" element={<AIChat />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/profile" element={<Profile />} />
       </Route>
       <Route path="/workflows/:id" element={<WorkflowBuilder />} />
     </Routes>

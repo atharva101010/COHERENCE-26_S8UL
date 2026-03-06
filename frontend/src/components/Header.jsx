@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { Bell, Search, Sparkles, Wifi, WifiOff } from 'lucide-react';
 
 const pageTitles = {
@@ -9,6 +9,7 @@ const pageTitles = {
   '/executions': 'Executions',
   '/settings': 'Settings',
   '/ai': 'AI Assistant',
+  '/profile': 'Profile',
 };
 
 const pageDescriptions = {
@@ -72,9 +73,9 @@ export default function Header() {
 
         <div className="w-px h-8 bg-zinc-200/60 mx-1" />
 
-        <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-xl flex items-center justify-center shadow-md shadow-indigo-200/50 cursor-pointer hover:shadow-lg hover:shadow-indigo-300/50 transition-all">
+        <Link to="/profile" className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-xl flex items-center justify-center shadow-md shadow-indigo-200/50 cursor-pointer hover:shadow-lg hover:shadow-indigo-300/50 transition-all" title="Profile">
           <span className="text-white text-sm font-bold">H</span>
-        </div>
+        </Link>
       </div>
     </header>
   );
