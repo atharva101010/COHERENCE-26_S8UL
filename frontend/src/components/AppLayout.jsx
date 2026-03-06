@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { Keyboard, X } from 'lucide-react';
 import Sidebar from './Sidebar';
-import Header from './Header';
 
 const shortcuts = [
   { key: 'D', label: 'Dashboard', path: '/' },
@@ -39,11 +38,10 @@ export default function AppLayout() {
   }, [handleKeyboard]);
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-zinc-50 via-white to-indigo-50/30">
+    <div className="flex h-screen overflow-hidden bg-neutral-100">
       <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0">
-        <Header />
-        <main className="flex-1 p-6 overflow-auto">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto w-full">
+        <main className="flex-1 h-full">
           <Outlet />
         </main>
         {/* Keyboard shortcut hint */}
