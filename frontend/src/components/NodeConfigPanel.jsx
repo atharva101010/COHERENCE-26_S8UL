@@ -114,20 +114,92 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
         {/* ===== AI GENERATE NODE ===== */}
         {node.type === 'aiGenerateNode' && (
           <>
+            {/* Message Type */}
+            <div>
+              <label className={labelClass}>Message Type</label>
+              <select value={node.data.messageType || 'outreach_email'} onChange={(e) => updateData('messageType', e.target.value)} className={inputClass}>
+                <option value="outreach_email">Outreach Email</option>
+                <option value="follow_up">Follow-up Email</option>
+                <option value="welcome_email">Welcome Email</option>
+                <option value="re_engagement">Re-engagement Email</option>
+                <option value="newsletter">Newsletter</option>
+                <option value="meeting_request">Meeting Request</option>
+                <option value="thank_you">Thank You Email</option>
+                <option value="introduction">Introduction Email</option>
+              </select>
+            </div>
+
+            {/* Sender Info */}
+            <div className="p-3 bg-indigo-50/60 rounded-xl border border-indigo-100 space-y-3">
+              <h4 className="text-xs font-semibold text-indigo-700 uppercase tracking-wide">Sender Details</h4>
+              <div>
+                <label className={labelClass}>Your Name</label>
+                <input type="text" value={node.data.senderName || ''} onChange={(e) => updateData('senderName', e.target.value)} placeholder="e.g. Alex Johnson" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Your Company Name</label>
+                <input type="text" value={node.data.companyName || ''} onChange={(e) => updateData('companyName', e.target.value)} placeholder="e.g. FlowReach AI" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Signature</label>
+                <textarea value={node.data.signature || ''} onChange={(e) => updateData('signature', e.target.value)} rows={2}
+                  placeholder="Best regards,&#10;Alex Johnson, CEO at FlowReach AI" className={inputClass + ' resize-none'} />
+              </div>
+            </div>
+
+            {/* Personalization */}
+            <div className="p-3 bg-violet-50/60 rounded-xl border border-violet-100 space-y-3">
+              <h4 className="text-xs font-semibold text-violet-700 uppercase tracking-wide">Personalization</h4>
+              <div>
+                <label className={labelClass}>Target Industry</label>
+                <input type="text" value={node.data.industry || ''} onChange={(e) => updateData('industry', e.target.value)} placeholder="e.g. SaaS, Healthcare, FinTech" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Pain Points to Address</label>
+                <textarea value={node.data.painPoints || ''} onChange={(e) => updateData('painPoints', e.target.value)} rows={2}
+                  placeholder="e.g. Manual outreach is slow, low response rates, no personalization at scale" className={inputClass + ' resize-none'} />
+              </div>
+              <div>
+                <label className={labelClass}>Call to Action</label>
+                <input type="text" value={node.data.callToAction || ''} onChange={(e) => updateData('callToAction', e.target.value)} placeholder="e.g. Book a 15-min demo call" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Language</label>
+                <select value={node.data.language || 'English'} onChange={(e) => updateData('language', e.target.value)} className={inputClass}>
+                  <option value="English">English</option>
+                  <option value="Spanish">Spanish</option>
+                  <option value="French">French</option>
+                  <option value="German">German</option>
+                  <option value="Hindi">Hindi</option>
+                  <option value="Portuguese">Portuguese</option>
+                  <option value="Japanese">Japanese</option>
+                  <option value="Chinese">Chinese</option>
+                  <option value="Arabic">Arabic</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Prompt Template */}
             <div>
               <label className={labelClass}>Prompt Template</label>
               <textarea value={node.data.prompt || ''} onChange={(e) => updateData('prompt', e.target.value)} rows={4}
                 placeholder="Write a personalized email to {{name}} at {{company}}..." className={inputClass + ' resize-none'} />
               <p className="mt-1 text-xs text-zinc-400">Variables: {'{{name}}'}, {'{{email}}'}, {'{{company}}'}, {'{{title}}'}</p>
             </div>
+
+            {/* Tone & Length */}
             <div>
               <label className={labelClass}>Tone</label>
               <select value={node.data.tone || 'professional'} onChange={(e) => updateData('tone', e.target.value)} className={inputClass}>
                 <option value="professional">Professional</option>
-                <option value="friendly">Friendly</option>
+                <option value="friendly">Friendly & Warm</option>
                 <option value="casual">Casual</option>
                 <option value="formal">Formal</option>
                 <option value="persuasive">Persuasive</option>
+                <option value="enthusiastic">Enthusiastic</option>
+                <option value="empathetic">Empathetic</option>
+                <option value="humorous">Humorous</option>
+                <option value="urgent">Urgent</option>
               </select>
             </div>
             <div>

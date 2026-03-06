@@ -83,7 +83,7 @@ function generateMockEmail(lead, prompt, tone) {
 // Generate a single AI message for a lead
 // ──────────────────────────────────────────────
 
-async function generateMessage({ lead, prompt, tone, maxLength, credentialId, model }) {
+async function generateMessage({ lead, prompt, tone, maxLength, credentialId, model, companyName, senderName, industry, painPoints, callToAction, signature, language, messageType }) {
   const filledPrompt = replaceVariables(prompt, lead);
 
   const groq = await getGroqClient(credentialId);
@@ -92,9 +92,34 @@ async function generateMessage({ lead, prompt, tone, maxLength, credentialId, mo
     return mockResults[0];
   }
 
-  const systemPrompt = `You are an expert email copywriter. Write a personalized outreach email.
+  const personalizationContext = [
+    companyName ? `Sender's company: ${companyName}` : '',
+    senderName ? `Sender's name: ${senderName}` : '',
+    industry ? `Target industry: ${industry}` : '',
+    painPoints ? `Key pain points to address: ${painPoints}` : '',
+    callToAction ? `Call to action: ${callToAction}` : '',
+    signature ? `Email signature: ${signature}` : '',
+    language ? `Language: ${language}` : 'Language: English',
+    messageType ? `Message type: ${messageType}` : 'Message type: outreach email',
+  ].filter(Boolean).join('\n');
+
+  const systemPrompt = `You are an expert email copywriter specializing in personalized outreach. Write a highly personalized ${messageType || 'outreach email'}.
+
+Personalization Context:
+${personalizationContext}
+
 Tone: ${tone || 'professional'}.
 Maximum length: ${maxLength || 200} words.
+
+Rules:
+- Use the recipient's name naturally in the greeting
+- Reference their company and role specifically
+- Address their pain points if provided
+- Include a clear call-to-action
+- Sign off with the sender's name/signature if provided
+- Make it feel genuinely personal, not templated
+- Match the specified tone precisely
+
 Return ONLY a JSON object with "subject" and "body" fields — no markdown, no code fences, no extra text.`;
 
   const completion = await groq.chat.completions.create({
@@ -131,7 +156,7 @@ Return ONLY a JSON object with "subject" and "body" fields — no markdown, no c
 // Preview: generate messages for multiple leads
 // ──────────────────────────────────────────────
 
-async function previewMessages({ leads, prompt, tone, maxLength, credentialId, model }) {
+async function previewMessages({ leads, prompt, tone, maxLength, credentialId, model, companyName, senderName, industry, painPoints, callToAction, signature, language, messageType }) {
   const groq = await getGroqClient(credentialId);
 
   if (!groq) {
@@ -140,7 +165,7 @@ async function previewMessages({ leads, prompt, tone, maxLength, credentialId, m
 
   const results = [];
   for (const lead of leads.slice(0, 5)) {
-    const result = await generateMessage({ lead, prompt, tone, maxLength, credentialId, model });
+    const result = await generateMessage({ lead, prompt, tone, maxLength, credentialId, model, companyName, senderName, industry, painPoints, callToAction, signature, language, messageType });
     results.push({ ...result, id: results.length + 1 });
   }
   return results;

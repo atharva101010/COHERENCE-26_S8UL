@@ -189,18 +189,26 @@ export class WorkflowExecutor {
   }
 
   async handleAIGenerate(node) {
-    const { prompt, tone, maxLength } = node.data || {};
+    const { prompt, tone, maxLength, companyName, senderName, industry, painPoints, callToAction, signature, language, messageType } = node.data || {};
     if (!prompt) {
       this.log('warn', 'AI Generate node has no prompt — using default');
     }
     const actualPrompt = prompt || 'Write a professional outreach email to {{name}} at {{company}}.';
-    this.log('info', `Generating AI message (tone: ${tone || 'professional'})...`);
+    this.log('info', `Generating AI message (tone: ${tone || 'professional'}, type: ${messageType || 'outreach_email'})...`);
 
     const result = await generateMessage({
       lead: this.context.lead,
       prompt: actualPrompt,
       tone: tone || 'professional',
       maxLength: maxLength || 200,
+      companyName,
+      senderName,
+      industry,
+      painPoints,
+      callToAction,
+      signature,
+      language,
+      messageType,
     });
 
     this.context.generatedMessage = result;

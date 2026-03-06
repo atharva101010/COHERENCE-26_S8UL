@@ -26,6 +26,14 @@ export default function AIPreviewModal({ isOpen, onClose, nodeData }) {
           maxLength: nodeData.maxLength || 200,
           credentialId: nodeData.credentialId || null,
           model: nodeData.model || null,
+          companyName: nodeData.companyName || '',
+          senderName: nodeData.senderName || '',
+          industry: nodeData.industry || '',
+          painPoints: nodeData.painPoints || '',
+          callToAction: nodeData.callToAction || '',
+          signature: nodeData.signature || '',
+          language: nodeData.language || 'English',
+          messageType: nodeData.messageType || 'outreach_email',
         }),
       });
 
@@ -102,6 +110,26 @@ export default function AIPreviewModal({ isOpen, onClose, nodeData }) {
             <span>
               Max: <strong className="text-zinc-800">{nodeData.maxLength || 200}</strong> words
             </span>
+            {nodeData.companyName && (
+              <span>
+                Company: <strong className="text-zinc-800">{nodeData.companyName}</strong>
+              </span>
+            )}
+            {nodeData.senderName && (
+              <span>
+                From: <strong className="text-zinc-800">{nodeData.senderName}</strong>
+              </span>
+            )}
+            {nodeData.industry && (
+              <span>
+                Industry: <strong className="text-zinc-800">{nodeData.industry}</strong>
+              </span>
+            )}
+            {nodeData.messageType && (
+              <span>
+                Type: <strong className="text-zinc-800">{nodeData.messageType.replace(/_/g, ' ')}</strong>
+              </span>
+            )}
           </div>
           <p className="mt-1.5 text-xs text-zinc-500 truncate">
             Prompt: <span className="text-zinc-700">{nodeData.prompt || 'No prompt set'}</span>

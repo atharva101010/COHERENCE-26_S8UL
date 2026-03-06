@@ -8,7 +8,7 @@ const router = Router();
 // POST /api/ai/generate — Generate a single message for one lead
 router.post('/generate', async (req, res) => {
   try {
-    const { leadId, prompt, tone, maxLength, credentialId, model } = req.body;
+    const { leadId, prompt, tone, maxLength, credentialId, model, companyName, senderName, industry, painPoints, callToAction, signature, language, messageType } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ error: 'Prompt template is required' });
@@ -27,7 +27,7 @@ router.post('/generate', async (req, res) => {
       lead = req.body.lead || { name: 'John Doe', email: 'john@example.com', company: 'Acme Inc', title: 'CEO' };
     }
 
-    const result = await generateMessage({ lead, prompt, tone, maxLength, credentialId, model });
+    const result = await generateMessage({ lead, prompt, tone, maxLength, credentialId, model, companyName, senderName, industry, painPoints, callToAction, signature, language, messageType });
 
     // Store in messages table
     const { error: insertError } = await supabase
@@ -51,7 +51,7 @@ router.post('/generate', async (req, res) => {
 // POST /api/ai/preview — Preview messages for multiple leads
 router.post('/preview', async (req, res) => {
   try {
-    const { prompt, tone, maxLength, credentialId, model, leadIds } = req.body;
+    const { prompt, tone, maxLength, credentialId, model, leadIds, companyName, senderName, industry, painPoints, callToAction, signature, language, messageType } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ error: 'Prompt template is required' });
@@ -88,7 +88,7 @@ router.post('/preview', async (req, res) => {
       ];
     }
 
-    const results = await previewMessages({ leads, prompt, tone, maxLength, credentialId, model });
+    const results = await previewMessages({ leads, prompt, tone, maxLength, credentialId, model, companyName, senderName, industry, painPoints, callToAction, signature, language, messageType });
     res.json({ previews: results, source: results[0]?.source || 'mock' });
   } catch (err) {
     console.error('AI preview error:', err);
