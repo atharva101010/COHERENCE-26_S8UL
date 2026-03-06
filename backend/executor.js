@@ -1,6 +1,7 @@
 import supabase from './db.js';
 import { generateMessage, replaceVariables } from './ai.js';
 import nodemailer from 'nodemailer';
+import whatsappService from './whatsapp.js';
 import twilio from 'twilio';
 
 // ──────────────────────────────────────────────
@@ -601,7 +602,7 @@ export class WorkflowExecutor {
     const recipientPhone = replaceVariables(to || '', this.context.lead) || this.lead.phone;
 
     if (!recipientPhone) {
-      this.log('warn', 'WhatsApp node: No phone number for lead — skipping');
+      this.log('warn', 'WhatsApp node: No phone number for lead \u2014 skipping');
       await supabase.from('messages').insert({
         lead_id: this.lead.id,
         execution_id: this.executionId,
@@ -621,7 +622,7 @@ export class WorkflowExecutor {
       .maybeSingle();
 
     if (blocked) {
-      this.log('warn', `WhatsApp to ${recipientPhone} BLOCKED — lead is blacklisted`);
+      this.log('warn', `WhatsApp to ${recipientPhone} BLOCKED \u2014 lead is blacklisted`);
       await supabase.from('messages').insert({
         lead_id: this.lead.id,
         execution_id: this.executionId,
@@ -633,78 +634,40 @@ export class WorkflowExecutor {
       return;
     }
 
-    // Get Twilio credentials
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
-    const fromNumber = process.env.TWILIO_WHATSAPP_FROM;
+    // Send via whatsapp-web.js (free, no API key needed)
+    const result = await whatsappService.sendMessage(recipientPhone, messageBody);
 
-    if (!accountSid || !authToken || !fromNumber) {
-      // Check credentials table as fallback
-      const { data: twilioCred } = await supabase
-        .from('credentials')
-        .select('*')
-        .eq('type', 'twilio')
-        .limit(1)
-        .maybeSingle();
-
-      if (!twilioCred) {
-        this.log('warn', 'No Twilio credentials configured — WhatsApp message simulated');
-        this.log('info', `WhatsApp (simulated) to ${recipientPhone}: "${messageBody.substring(0, 100)}..."`);
-        await supabase.from('messages').insert({
-          lead_id: this.lead.id,
-          execution_id: this.executionId,
-          type: 'whatsapp',
-          subject: 'WhatsApp Message (Simulated)',
-          body: messageBody,
-          status: 'sent',
-        });
-        await supabase.from('leads').update({ status: 'contacted', updated_at: new Date().toISOString() }).eq('id', this.lead.id);
-        return;
-      }
-
-      const config = typeof twilioCred.config === 'string' ? JSON.parse(twilioCred.config) : twilioCred.config || {};
-      return await this._sendWhatsApp(config.accountSid, config.authToken, config.whatsappFrom, recipientPhone, messageBody);
-    }
-
-    await this._sendWhatsApp(accountSid, authToken, fromNumber, recipientPhone, messageBody);
-  }
-
-  async _sendWhatsApp(accountSid, authToken, fromNumber, toNumber, body) {
-    try {
-      const client = twilio(accountSid, authToken);
-
-      // Ensure numbers have whatsapp: prefix
-      const from = fromNumber.startsWith('whatsapp:') ? fromNumber : `whatsapp:${fromNumber}`;
-      const to = toNumber.startsWith('whatsapp:') ? toNumber : `whatsapp:${toNumber}`;
-
-      const message = await client.messages.create({
-        from,
-        to,
-        body,
-      });
-
-      this.log('info', `WhatsApp sent to ${toNumber} — SID: ${message.sid}`);
-
-      // Store sent message
+    if (result.success) {
+      this.log('info', `WhatsApp sent to ${recipientPhone} \u2014 ID: ${result.messageId}`);
       await supabase.from('messages').insert({
         lead_id: this.lead.id,
         execution_id: this.executionId,
         type: 'whatsapp',
         subject: 'WhatsApp Message',
-        body,
+        body: messageBody,
         status: 'sent',
       });
-
-      // Update lead status
       await supabase.from('leads').update({ status: 'contacted', updated_at: new Date().toISOString() }).eq('id', this.lead.id);
-    } catch (err) {
-      this.log('error', `WhatsApp send failed: ${err.message}`);
+    } else if (result.simulated) {
+      this.log('warn', 'WhatsApp not connected \u2014 message simulated. Scan QR code in terminal to connect.');
+      this.log('info', `WhatsApp (simulated) to ${recipientPhone}: "${messageBody.substring(0, 100)}..."`);
+      await supabase.from('messages').insert({
+        lead_id: this.lead.id,
+        execution_id: this.executionId,
+        type: 'whatsapp',
+        subject: 'WhatsApp Message (Simulated)',
+        body: messageBody,
+        status: 'sent',
+      });
+      await supabase.from('leads').update({ status: 'contacted', updated_at: new Date().toISOString() }).eq('id', this.lead.id);
+    } else {
+      this.log('error', `WhatsApp send failed: ${result.error}`);
       await supabase.from('messages').insert({
         lead_id: this.lead.id,
         execution_id: this.executionId,
         type: 'whatsapp',
         subject: 'WhatsApp Message',
-        body,
+        body: messageBody,
         status: 'failed',
       });
     }

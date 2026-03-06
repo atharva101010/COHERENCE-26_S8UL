@@ -36,3 +36,7 @@ Thumbs.db
 # temporary
 *.tmp
 *.temp
+
+# whatsapp session
+.wwebjs_auth/
+.wwebjs_cache/

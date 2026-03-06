@@ -10,6 +10,7 @@ import credentialsRouter from './routes/credentials.js';
 import aiRouter from './routes/ai.js';
 import executionsRouter from './routes/executions.js';
 import settingsRouter from './routes/settings.js';
+import whatsappService from './whatsapp.js';
 
 dotenv.config();
 
@@ -30,9 +31,18 @@ app.use(express.json({ limit: '10mb' }));
 // Make io accessible to routes
 app.set('io', io);
 
+// Initialize WhatsApp client (scan QR code in terminal)
+whatsappService.initialize();
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// WhatsApp connection status
+app.get('/api/whatsapp/status', (req, res) => {
+  const status = whatsappService.getStatus();
+  res.json(status);
 });
 
 // API routes
@@ -66,6 +76,7 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
   console.log(`FlowReach AI backend running on port ${PORT}`);
+  console.log(`📱 WhatsApp: Scan QR code above to connect (if shown)`);
 });
 
 export { app, io };
