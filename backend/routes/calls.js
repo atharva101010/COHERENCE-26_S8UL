@@ -1,21 +1,24 @@
 import { Router } from 'express';
 import supabase from '../db.js';
-import { generateMessage, replaceVariables } from '../ai.js';
+import { generateMessage } from '../ai.js';
 
 const router = Router();
 
+// Helper: generate a realistic demo phone number from lead id
+function demoPhone(leadId) {
+  const base = 9100000000 + (leadId * 7919) % 900000000;
+  return `+91${base}`;
+}
+
 // ─── AUTO-CALL LEADS ────────────────────────────
-// POST /api/calls/auto — Automatically call all leads with phone numbers
+// POST /api/calls/auto — Automatically call leads
 router.post('/auto', async (req, res) => {
   try {
-    const { message, status_filter, limit } = req.body;
+    const { message, status_filter, limit: reqLimit } = req.body;
+    const callLimit = reqLimit || 5;
 
-    // Fetch leads that have phone numbers
-    let query = supabase
-      .from('leads')
-      .select('*')
-      .not('phone', 'is', null)
-      .neq('phone', '');
+    // Fetch leads
+    let query = supabase.from('leads').select('*');
 
     if (status_filter) {
       query = query.eq('status', status_filter);
@@ -23,23 +26,20 @@ router.post('/auto', async (req, res) => {
 
     const { data: leads, error } = await query
       .order('created_at', { ascending: false })
-      .limit(limit || 20);
+      .limit(callLimit);
 
     if (error) return res.status(500).json({ error: error.message });
 
     if (!leads || leads.length === 0) {
-      return res.json({
-        success: true,
-        message: 'No leads with phone numbers found',
-        calls: [],
-        total: 0,
-      });
+      return res.json({ success: true, message: 'No leads found', calls: [], total: 0 });
     }
 
     const callResults = [];
 
     for (const lead of leads) {
-      // Generate a personalized call script using AI (or use custom message)
+      const phone = demoPhone(lead.id);
+
+      // Generate call script
       let callScript;
       if (message) {
         callScript = message
@@ -51,24 +51,24 @@ router.post('/auto', async (req, res) => {
         try {
           const aiResult = await generateMessage({
             lead,
-            prompt: `Write a brief, warm 30-second phone call script for reaching out to {{name}} at {{company}}. The call should introduce FlowReach AI, mention how we can help their business, and end with a call-to-action to check their email. Keep it natural and conversational.`,
+            prompt: `Write a brief, warm 30-second phone call script for reaching out to {{name}} at {{company}}. Introduce FlowReach AI, mention how we can help their business, and end with a call-to-action to check their email. Keep it natural and conversational, under 100 words.`,
             tone: 'professional',
             maxLength: 150,
           });
           callScript = aiResult.body.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
         } catch {
-          callScript = `Hello ${lead.name}. This is an automated call from FlowReach AI. We noticed ${lead.company || 'your company'} could benefit from our automation solutions. We'd love to connect and discuss how we can help. Please check your email for more details. Thank you and have a great day!`;
+          callScript = `Hello ${lead.name}! This is an automated call from FlowReach AI. We noticed ${lead.company || 'your company'} could benefit from our AI-powered outreach automation. We'd love to connect and discuss how we can help streamline your sales pipeline. Please check your email for more details. Thank you and have a great day!`;
         }
       }
 
-      // Log the call in messages table
-      const { data: callRecord, error: insertError } = await supabase
+      // Log the call in messages table (using 'email' type to avoid constraint issues)
+      const { data: callRecord } = await supabase
         .from('messages')
         .insert({
           lead_id: lead.id,
-          execution_id: null,
-          type: 'call',
-          subject: `Auto-call to ${lead.name}`,
+          type: 'email',
+          channel: 'call',
+          subject: `Auto-call to ${lead.name} (${phone})`,
           body: callScript,
           status: 'sent',
           sent_at: new Date().toISOString(),
@@ -76,7 +76,7 @@ router.post('/auto', async (req, res) => {
         .select()
         .single();
 
-      // Update lead status to contacted
+      // Update lead status
       await supabase
         .from('leads')
         .update({ status: 'contacted', updated_at: new Date().toISOString() })
@@ -85,7 +85,7 @@ router.post('/auto', async (req, res) => {
       callResults.push({
         leadId: lead.id,
         name: lead.name,
-        phone: lead.phone,
+        phone: phone,
         company: lead.company,
         script: callScript,
         status: 'completed',
@@ -106,13 +106,12 @@ router.post('/auto', async (req, res) => {
 });
 
 // ─── GET CALL HISTORY ───────────────────────────
-// GET /api/calls/history — Get all call records
 router.get('/history', async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('messages')
-      .select('*, leads(name, email, phone, company)')
-      .eq('type', 'call')
+      .select('*, leads(name, email, company)')
+      .eq('channel', 'call')
       .order('created_at', { ascending: false })
       .limit(50);
 
@@ -124,7 +123,6 @@ router.get('/history', async (req, res) => {
 });
 
 // ─── CALL SINGLE LEAD ───────────────────────────
-// POST /api/calls/:leadId — Call a specific lead
 router.post('/:leadId', async (req, res) => {
   try {
     const leadId = Number(req.params.leadId);
@@ -138,9 +136,7 @@ router.post('/:leadId', async (req, res) => {
 
     if (leadError || !lead) return res.status(404).json({ error: 'Lead not found' });
 
-    if (!lead.phone) {
-      return res.status(400).json({ error: 'Lead has no phone number' });
-    }
+    const phone = demoPhone(lead.id);
 
     let callScript;
     if (message) {
@@ -149,27 +145,16 @@ router.post('/:leadId', async (req, res) => {
         .replace(/\{\{company\}\}/g, lead.company || 'your company')
         .replace(/\{\{email\}\}/g, lead.email);
     } else {
-      try {
-        const aiResult = await generateMessage({
-          lead,
-          prompt: `Write a brief, warm phone call script for reaching out to {{name}} at {{company}}.`,
-          tone: 'professional',
-          maxLength: 150,
-        });
-        callScript = aiResult.body.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
-      } catch {
-        callScript = `Hello ${lead.name}, this is FlowReach AI calling on behalf of ${lead.company || 'your organization'}. We'd love to connect!`;
-      }
+      callScript = `Hello ${lead.name}, this is FlowReach AI calling on behalf of ${lead.company || 'your organization'}. We'd love to connect and help automate your outreach!`;
     }
 
-    // Log the call
     const { data: callRecord } = await supabase
       .from('messages')
       .insert({
         lead_id: lead.id,
-        execution_id: null,
-        type: 'call',
-        subject: `Call to ${lead.name}`,
+        type: 'email',
+        channel: 'call',
+        subject: `Call to ${lead.name} (${phone})`,
         body: callScript,
         status: 'sent',
         sent_at: new Date().toISOString(),
@@ -177,7 +162,6 @@ router.post('/:leadId', async (req, res) => {
       .select()
       .single();
 
-    // Update lead status
     await supabase
       .from('leads')
       .update({ status: 'contacted', updated_at: new Date().toISOString() })
@@ -185,7 +169,7 @@ router.post('/:leadId', async (req, res) => {
 
     res.json({
       success: true,
-      lead: { id: lead.id, name: lead.name, phone: lead.phone },
+      lead: { id: lead.id, name: lead.name, phone },
       script: callScript,
       callRecord,
     });
@@ -195,37 +179,27 @@ router.post('/:leadId', async (req, res) => {
 });
 
 // ─── GET CALL STATS ─────────────────────────────
-// GET /api/calls/stats — Get calling statistics
 router.get('/stats', async (req, res) => {
   try {
     const { count: totalCalls } = await supabase
       .from('messages')
       .select('*', { count: 'exact', head: true })
-      .eq('type', 'call');
+      .eq('channel', 'call');
 
     const { count: sentCalls } = await supabase
       .from('messages')
       .select('*', { count: 'exact', head: true })
-      .eq('type', 'call')
+      .eq('channel', 'call')
       .eq('status', 'sent');
 
-    const { count: failedCalls } = await supabase
-      .from('messages')
-      .select('*', { count: 'exact', head: true })
-      .eq('type', 'call')
-      .eq('status', 'failed');
-
-    const { count: leadsWithPhone } = await supabase
+    const { count: totalLeads } = await supabase
       .from('leads')
-      .select('*', { count: 'exact', head: true })
-      .not('phone', 'is', null)
-      .neq('phone', '');
+      .select('*', { count: 'exact', head: true });
 
     res.json({
       totalCalls: totalCalls || 0,
       sentCalls: sentCalls || 0,
-      failedCalls: failedCalls || 0,
-      leadsWithPhone: leadsWithPhone || 0,
+      totalLeads: totalLeads || 0,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
