@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import AppLayout from './components/AppLayout';
+import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
 import Workflows from './pages/Workflows';
@@ -11,8 +12,9 @@ import AIChat from './pages/AIChat';
 function App() {
   return (
     <Routes>
+      <Route path="/" element={<LandingPage />} />
       <Route element={<AppLayout />}>
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/leads" element={<Leads />} />
         <Route path="/workflows" element={<Workflows />} />
         <Route path="/executions" element={<Executions />} />
