@@ -32,10 +32,10 @@ async function getGroqClient(credentialId) {
 function replaceVariables(template, lead) {
   if (!template) return '';
   return template
-    .replace(/\{\{name\}\}/gi, lead.name || 'there')
-    .replace(/\{\{email\}\}/gi, lead.email || '')
-    .replace(/\{\{company\}\}/gi, lead.company || 'your company')
-    .replace(/\{\{title\}\}/gi, lead.title || 'professional');
+    .replaceAll(/\{\{name\}\}/gi, lead.name || 'there')
+    .replaceAll(/\{\{email\}\}/gi, lead.email || '')
+    .replaceAll(/\{\{company\}\}/gi, lead.company || 'your company')
+    .replaceAll(/\{\{title\}\}/gi, lead.title || 'professional');
 }
 
 // ──────────────────────────────────────────────
@@ -135,7 +135,7 @@ Return ONLY a JSON object with "subject" and "body" fields — no markdown, no c
   const raw = completion.choices[0]?.message?.content || '';
   let parsed;
   try {
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    const jsonMatch = /\{[\s\S]*\}/.exec(raw);
     parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { subject: 'Follow up', body: raw };
   } catch {
     parsed = { subject: 'Follow up', body: raw };

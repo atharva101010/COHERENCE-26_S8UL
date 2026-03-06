@@ -44,24 +44,18 @@ export async function fetchLeadById(id) {
   return data;
 }
 
-export async function bulkImportLeads(leads) {
-  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const validLeads = [];
-  let skipped = 0;
-  const errors = [];
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  for (const lead of leads) {
-    if (!lead.name || !lead.email) {
-      skipped++;
-      errors.push(`Missing name or email: ${JSON.stringify(lead).slice(0, 80)}`);
-      continue;
-    }
-    if (!EMAIL_RE.test(lead.email)) {
-      skipped++;
-      errors.push(`Invalid email: ${lead.email}`);
-      continue;
-    }
-    validLeads.push({
+function validateLead(lead) {
+  if (!lead.name || !lead.email) {
+    return { valid: false, error: `Missing name or email: ${JSON.stringify(lead).slice(0, 80)}` };
+  }
+  if (!EMAIL_RE.test(lead.email)) {
+    return { valid: false, error: `Invalid email: ${lead.email}` };
+  }
+  return {
+    valid: true,
+    data: {
       name: String(lead.name),
       email: String(lead.email),
       company: lead.company ? String(lead.company) : null,
@@ -69,7 +63,23 @@ export async function bulkImportLeads(leads) {
       status: 'new',
       source: lead.source ? String(lead.source) : 'csv_import',
       custom_fields: lead.custom_fields ? JSON.stringify(lead.custom_fields) : null,
-    });
+    },
+  };
+}
+
+export async function bulkImportLeads(leads) {
+  const validLeads = [];
+  let skipped = 0;
+  const errors = [];
+
+  for (const lead of leads) {
+    const result = validateLead(lead);
+    if (!result.valid) {
+      skipped++;
+      errors.push(result.error);
+      continue;
+    }
+    validLeads.push(result.data);
   }
 
   let imported = 0;
@@ -661,5 +671,64 @@ export async function createWorkflowWithAI({ description }) {
     const err = await res.json();
     throw new Error(err.error || 'AI workflow creation failed');
   }
+  return res.json();
+}
+
+// ──────────────────────────────────────────────
+// SETTINGS API (backend routes)
+// ──────────────────────────────────────────────
+
+export async function fetchBlacklistAPI() {
+  const res = await fetch(`${API_BASE}/api/settings/blacklist`);
+  if (!res.ok) throw new Error('Failed to fetch blacklist');
+  return res.json();
+}
+
+export async function addToBlacklistAPI(email, reason) {
+  const res = await fetch(`${API_BASE}/api/settings/blacklist`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, reason }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Failed to add to blacklist');
+  }
+  return res.json();
+}
+
+export async function removeFromBlacklistAPI(id) {
+  const res = await fetch(`${API_BASE}/api/settings/blacklist/${id}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Failed to remove from blacklist');
+  return res.json();
+}
+
+export async function fetchDailyStats() {
+  const res = await fetch(`${API_BASE}/api/settings/daily-stats`);
+  if (!res.ok) throw new Error('Failed to fetch daily stats');
+  return res.json();
+}
+
+export async function fetchDailyStatsHistory() {
+  const res = await fetch(`${API_BASE}/api/settings/daily-stats/history`);
+  if (!res.ok) throw new Error('Failed to fetch history');
+  return res.json();
+}
+
+export async function resetDailyCount() {
+  const res = await fetch(`${API_BASE}/api/settings/daily-stats/reset`, { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to reset');
+  return res.json();
+}
+
+export async function fetchSafetyScore() {
+  const res = await fetch(`${API_BASE}/api/settings/safety-score`);
+  if (!res.ok) throw new Error('Failed to fetch safety score');
+  return res.json();
+}
+
+export async function resetSeedData() {
+  const res = await fetch(`${API_BASE}/api/seed/reset`, { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to reset demo data');
   return res.json();
 }

@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Play, Clock, CheckCircle2, XCircle, AlertTriangle, RefreshCw,
-  ChevronRight, Zap, Mail, Bot, ArrowRight, Loader2, Search,
+  ChevronRight, Zap, Bot, ArrowRight, Loader2, Search,
   Users, Check, X, Radio, Activity
 } from 'lucide-react';
 import { fetchWorkflows, fetchLeads, runWorkflowExecution, fetchExecutionsFromAPI } from '../lib/supabaseService';
 import toast from 'react-hot-toast';
 import { io } from 'socket.io-client';
+import PropTypes from 'prop-types';
 
 const STATUS_CONFIG = {
   pending:   { color: 'bg-zinc-100 text-zinc-600', icon: Clock, dot: 'bg-zinc-400' },
@@ -15,6 +16,19 @@ const STATUS_CONFIG = {
   failed:    { color: 'bg-red-50 text-red-600', icon: XCircle, dot: 'bg-red-500' },
   paused:    { color: 'bg-amber-50 text-amber-600', icon: AlertTriangle, dot: 'bg-amber-500' },
 };
+
+function getLogColor(level) {
+  if (level === 'error') return 'text-red-400';
+  if (level === 'warn') return 'text-amber-400';
+  return 'text-emerald-400';
+}
+
+function getLeadStatusBadge(status) {
+  if (status === 'new') return 'bg-blue-50 text-blue-600';
+  if (status === 'contacted') return 'bg-amber-50 text-amber-600';
+  if (status === 'converted') return 'bg-emerald-50 text-emerald-600';
+  return 'bg-zinc-100 text-zinc-500';
+}
 
 function StatCard({ label, value, icon: Icon, color, iconColor }) {
   return (
@@ -31,6 +45,14 @@ function StatCard({ label, value, icon: Icon, color, iconColor }) {
     </div>
   );
 }
+
+StatCard.propTypes = {
+  label: PropTypes.string.isRequired,
+  value: PropTypes.number.isRequired,
+  icon: PropTypes.elementType.isRequired,
+  color: PropTypes.string.isRequired,
+  iconColor: PropTypes.string.isRequired,
+};
 
 function ExecutionRow({ exec }) {
   const config = STATUS_CONFIG[exec.status] || STATUS_CONFIG.pending;
@@ -89,9 +111,11 @@ function ExecutionRow({ exec }) {
             <div>
               <span className="text-zinc-400">Duration</span>
               <p className="text-zinc-700 font-medium mt-0.5">
-                {exec.started_at && exec.completed_at
-                  ? `${((new Date(exec.completed_at) - new Date(exec.started_at)) / 1000).toFixed(1)}s`
-                  : exec.status === 'running' ? 'In progress...' : '—'}
+                {(() => {
+                  if (exec.started_at && exec.completed_at) return `${((new Date(exec.completed_at) - new Date(exec.started_at)) / 1000).toFixed(1)}s`;
+                  if (exec.status === 'running') return 'In progress...';
+                  return '—';
+                })()}
               </p>
             </div>
           </div>
@@ -100,20 +124,19 @@ function ExecutionRow({ exec }) {
             <div className="mt-4">
               <p className="text-xs text-zinc-400 mb-2">Execution Log ({logs.length} entries)</p>
               <div className="bg-zinc-900 rounded-lg p-3 max-h-48 overflow-y-auto space-y-1 font-mono text-xs">
-                {logs.map((log, i) => (
-                  <div key={i} className="flex gap-2">
-                    <span className="text-zinc-500 flex-shrink-0">
-                      {log.time ? new Date(log.time).toLocaleTimeString() : `#${i + 1}`}
-                    </span>
-                    <span className={
-                      log.level === 'error' ? 'text-red-400'
-                      : log.level === 'warn' ? 'text-amber-400'
-                      : 'text-emerald-400'
-                    }>
-                      {log.message || JSON.stringify(log)}
-                    </span>
-                  </div>
-                ))}
+                {logs.map((log, i) => {
+                  const logColor = getLogColor(log.level);
+                  return (
+                    <div key={`${log.time || ''}-${i}`} className="flex gap-2">
+                      <span className="text-zinc-500 flex-shrink-0">
+                        {log.time ? new Date(log.time).toLocaleTimeString() : `#${i + 1}`}
+                      </span>
+                      <span className={logColor}>
+                        {log.message || JSON.stringify(log)}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -128,6 +151,20 @@ function ExecutionRow({ exec }) {
     </div>
   );
 }
+
+ExecutionRow.propTypes = {
+  exec: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    status: PropTypes.string,
+    logs: PropTypes.array,
+    workflows: PropTypes.shape({ name: PropTypes.string }),
+    leads: PropTypes.shape({ name: PropTypes.string, email: PropTypes.string }),
+    started_at: PropTypes.string,
+    created_at: PropTypes.string,
+    completed_at: PropTypes.string,
+    current_node: PropTypes.string,
+  }).isRequired,
+};
 
 export default function Executions() {
   const [executions, setExecutions] = useState([]);
@@ -148,27 +185,35 @@ export default function Executions() {
   const [runningExecution, setRunningExecution] = useState(false);
 
   // Socket.io for real-time
+  const [socketConnected, setSocketConnected] = useState(true);
+
+  const updateExecutionStatus = useCallback((data) => {
+    setExecutions(prev => prev.map(e =>
+      e.id === data.executionId
+        ? { ...e, status: data.status, current_node: data.currentNode }
+        : e
+    ));
+    if (data.status === 'completed' || data.status === 'failed') {
+      setTimeout(() => loadData(), 1000);
+    }
+  }, []);
+
   useEffect(() => {
     const socket = io('http://localhost:3001');
     socketRef.current = socket;
+
+    socket.on('connect', () => setSocketConnected(true));
+    socket.on('disconnect', () => setSocketConnected(false));
+    socket.on('connect_error', () => setSocketConnected(false));
 
     socket.on('execution:log', (data) => {
       setLiveLogs(prev => [...prev, { ...data.log, executionId: data.executionId }].slice(-200));
     });
 
-    socket.on('execution:status', (data) => {
-      setExecutions(prev => prev.map(e =>
-        e.id === data.executionId
-          ? { ...e, status: data.status, current_node: data.currentNode }
-          : e
-      ));
-      if (data.status === 'completed' || data.status === 'failed') {
-        setTimeout(() => loadData(), 1000);
-      }
-    });
+    socket.on('execution:status', updateExecutionStatus);
 
     return () => { socket.disconnect(); };
-  }, []);
+  }, [updateExecutionStatus]);
 
   const loadData = useCallback(async () => {
     try {
@@ -243,6 +288,14 @@ export default function Executions() {
 
   return (
     <div className="space-y-6">
+      {/* Offline Banner */}
+      {!socketConnected && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-sm text-red-700">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          <span>Real-time connection lost. Live feed may not update. <button onClick={() => socketRef.current?.connect()} className="underline font-medium">Reconnect</button></span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -305,13 +358,16 @@ export default function Executions() {
                 <p className="text-zinc-700 mt-1">Run a workflow to see real-time logs here</p>
               </div>
             ) : (
-              liveLogs.map((log, i) => (
-                <div key={i} className="flex gap-3">
-                  <span className="text-zinc-600 flex-shrink-0 w-20">{log.time ? new Date(log.time).toLocaleTimeString() : ''}</span>
-                  <span className="text-zinc-500 flex-shrink-0 w-16">#{log.executionId}</span>
-                  <span className={log.level === 'error' ? 'text-red-400' : log.level === 'warn' ? 'text-amber-400' : 'text-emerald-400'}>{log.message}</span>
-                </div>
-              ))
+              liveLogs.map((log, i) => {
+                const logColor = getLogColor(log.level);
+                return (
+                  <div key={`live-${log.time || ''}-${i}`} className="flex gap-3">
+                    <span className="text-zinc-600 flex-shrink-0 w-20">{log.time ? new Date(log.time).toLocaleTimeString() : ''}</span>
+                    <span className="text-zinc-500 flex-shrink-0 w-16">#{log.executionId}</span>
+                    <span className={logColor}>{log.message}</span>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
@@ -329,7 +385,7 @@ export default function Executions() {
             ))}
           </div>
 
-          {loading ? (
+          {loading && (
             <div className="space-y-3">
               {[1, 2, 3].map(i => (
                 <div key={i} className="bg-white rounded-xl border border-zinc-200/60 p-5 animate-pulse">
@@ -341,7 +397,11 @@ export default function Executions() {
                 </div>
               ))}
             </div>
-          ) : filtered.length === 0 ? (
+          )}
+          {!loading && filtered.length > 0 && (
+            <div className="space-y-3">{filtered.map(exec => <ExecutionRow key={exec.id} exec={exec} />)}</div>
+          )}
+          {!loading && filtered.length === 0 && (
             <div className="bg-white rounded-2xl border border-zinc-200/60 p-16 text-center">
               <div className="w-16 h-16 bg-gradient-to-br from-zinc-100 to-zinc-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Play className="w-7 h-7 text-zinc-400" />
@@ -355,8 +415,6 @@ export default function Executions() {
                 Run Your First Workflow
               </button>
             </div>
-          ) : (
-            <div className="space-y-3">{filtered.map(exec => <ExecutionRow key={exec.id} exec={exec} />)}</div>
           )}
         </>
       )}
@@ -399,8 +457,8 @@ export default function Executions() {
             </div>
 
             <div className="px-6 py-3 border-b border-zinc-100">
-              <label className="block text-xs font-medium text-zinc-500 mb-1.5">Workflow</label>
-              <select value={selectedWorkflowId} onChange={(e) => setSelectedWorkflowId(e.target.value)} className="w-full px-3 py-2 text-sm border border-zinc-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+              <label htmlFor="workflow-select" className="block text-xs font-medium text-zinc-500 mb-1.5">Workflow</label>
+              <select id="workflow-select" value={selectedWorkflowId} onChange={(e) => setSelectedWorkflowId(e.target.value)} className="w-full px-3 py-2 text-sm border border-zinc-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
                 <option value="">Select a workflow...</option>
                 {workflows.map(wf => <option key={wf.id} value={wf.id}>{wf.name} ({Array.isArray(wf.nodes) ? wf.nodes.length : 0} nodes)</option>)}
               </select>
@@ -419,11 +477,13 @@ export default function Executions() {
             </div>
 
             <div className="flex-1 overflow-y-auto px-6 py-3 space-y-1.5">
-              {loadingLeads ? (
+              {loadingLeads && (
                 <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 text-emerald-500 animate-spin" /></div>
-              ) : filteredLeads.length === 0 ? (
+              )}
+              {!loadingLeads && filteredLeads.length === 0 && (
                 <div className="text-center py-12"><Users className="w-10 h-10 text-zinc-300 mx-auto mb-2" /><p className="text-sm text-zinc-500">No leads found</p></div>
-              ) : (
+              )}
+              {!loadingLeads && filteredLeads.length > 0 && (
                 filteredLeads.map(lead => (
                   <button key={lead.id} onClick={() => toggleLead(lead.id)} className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${selectedLeadIds.includes(lead.id) ? 'border-emerald-300 bg-emerald-50/50 ring-1 ring-emerald-200' : 'border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50'}`}>
                     <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors ${selectedLeadIds.includes(lead.id) ? 'bg-emerald-500 border-emerald-500' : 'border-zinc-300'}`}>
@@ -433,7 +493,7 @@ export default function Executions() {
                       <p className="text-sm font-medium text-zinc-800 truncate">{lead.name}</p>
                       <p className="text-xs text-zinc-400 truncate">{lead.email} {lead.company ? `· ${lead.company}` : ''}</p>
                     </div>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${lead.status === 'new' ? 'bg-blue-50 text-blue-600' : lead.status === 'contacted' ? 'bg-amber-50 text-amber-600' : lead.status === 'converted' ? 'bg-emerald-50 text-emerald-600' : 'bg-zinc-100 text-zinc-500'}`}>{lead.status}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getLeadStatusBadge(lead.status)}`}>{lead.status}</span>
                   </button>
                 ))
               )}

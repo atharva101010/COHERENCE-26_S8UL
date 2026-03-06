@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import {
   X, Play, Sparkles, Mail, Clock, GitBranch, UserCheck, Square,
   Globe, Webhook, Bot, Code, Filter, Merge, Split, CalendarClock,
@@ -94,15 +95,15 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
       <div className="p-4 space-y-4">
         {/* Common: Label */}
         <div>
-          <label className={labelClass}>Label</label>
-          <input type="text" value={node.data.label || ''} onChange={(e) => updateData('label', e.target.value)} className={inputClass} />
+          <label htmlFor="node-label" className={labelClass}>Label</label>
+          <input id="node-label" type="text" value={node.data.label || ''} onChange={(e) => updateData('label', e.target.value)} className={inputClass} />
         </div>
 
         {/* ===== START NODE ===== */}
         {node.type === 'startNode' && (
           <div>
-            <label className={labelClass}>Trigger</label>
-            <select value={node.data.trigger || 'manual'} onChange={(e) => updateData('trigger', e.target.value)} className={inputClass}>
+            <label htmlFor="start-trigger" className={labelClass}>Trigger</label>
+            <select id="start-trigger" value={node.data.trigger || 'manual'} onChange={(e) => updateData('trigger', e.target.value)} className={inputClass}>
               <option value="manual">Manual</option>
               <option value="scheduled">Scheduled</option>
               <option value="on_import">On Lead Import</option>
@@ -116,8 +117,8 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
           <>
             {/* Message Type */}
             <div>
-              <label className={labelClass}>Message Type</label>
-              <select value={node.data.messageType || 'outreach_email'} onChange={(e) => updateData('messageType', e.target.value)} className={inputClass}>
+              <label htmlFor="ai-messageType" className={labelClass}>Message Type</label>
+              <select id="ai-messageType" value={node.data.messageType || 'outreach_email'} onChange={(e) => updateData('messageType', e.target.value)} className={inputClass}>
                 <option value="outreach_email">Outreach Email</option>
                 <option value="follow_up">Follow-up Email</option>
                 <option value="welcome_email">Welcome Email</option>
@@ -133,16 +134,16 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
             <div className="p-3 bg-indigo-50/60 rounded-xl border border-indigo-100 space-y-3">
               <h4 className="text-xs font-semibold text-indigo-700 uppercase tracking-wide">Sender Details</h4>
               <div>
-                <label className={labelClass}>Your Name</label>
-                <input type="text" value={node.data.senderName || ''} onChange={(e) => updateData('senderName', e.target.value)} placeholder="e.g. Alex Johnson" className={inputClass} />
+                <label htmlFor="ai-senderName" className={labelClass}>Your Name</label>
+                <input id="ai-senderName" type="text" value={node.data.senderName || ''} onChange={(e) => updateData('senderName', e.target.value)} placeholder="e.g. Alex Johnson" className={inputClass} />
               </div>
               <div>
-                <label className={labelClass}>Your Company Name</label>
-                <input type="text" value={node.data.companyName || ''} onChange={(e) => updateData('companyName', e.target.value)} placeholder="e.g. FlowReach AI" className={inputClass} />
+                <label htmlFor="ai-companyName" className={labelClass}>Your Company Name</label>
+                <input id="ai-companyName" type="text" value={node.data.companyName || ''} onChange={(e) => updateData('companyName', e.target.value)} placeholder="e.g. FlowReach AI" className={inputClass} />
               </div>
               <div>
-                <label className={labelClass}>Signature</label>
-                <textarea value={node.data.signature || ''} onChange={(e) => updateData('signature', e.target.value)} rows={2}
+                <label htmlFor="ai-signature" className={labelClass}>Signature</label>
+                <textarea id="ai-signature" value={node.data.signature || ''} onChange={(e) => updateData('signature', e.target.value)} rows={2}
                   placeholder="Best regards,&#10;Alex Johnson, CEO at FlowReach AI" className={inputClass + ' resize-none'} />
               </div>
             </div>
@@ -151,21 +152,21 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
             <div className="p-3 bg-violet-50/60 rounded-xl border border-violet-100 space-y-3">
               <h4 className="text-xs font-semibold text-violet-700 uppercase tracking-wide">Personalization</h4>
               <div>
-                <label className={labelClass}>Target Industry</label>
-                <input type="text" value={node.data.industry || ''} onChange={(e) => updateData('industry', e.target.value)} placeholder="e.g. SaaS, Healthcare, FinTech" className={inputClass} />
+                <label htmlFor="ai-industry" className={labelClass}>Target Industry</label>
+                <input id="ai-industry" type="text" value={node.data.industry || ''} onChange={(e) => updateData('industry', e.target.value)} placeholder="e.g. SaaS, Healthcare, FinTech" className={inputClass} />
               </div>
               <div>
-                <label className={labelClass}>Pain Points to Address</label>
-                <textarea value={node.data.painPoints || ''} onChange={(e) => updateData('painPoints', e.target.value)} rows={2}
+                <label htmlFor="ai-painPoints" className={labelClass}>Pain Points to Address</label>
+                <textarea id="ai-painPoints" value={node.data.painPoints || ''} onChange={(e) => updateData('painPoints', e.target.value)} rows={2}
                   placeholder="e.g. Manual outreach is slow, low response rates, no personalization at scale" className={inputClass + ' resize-none'} />
               </div>
               <div>
-                <label className={labelClass}>Call to Action</label>
-                <input type="text" value={node.data.callToAction || ''} onChange={(e) => updateData('callToAction', e.target.value)} placeholder="e.g. Book a 15-min demo call" className={inputClass} />
+                <label htmlFor="ai-cta" className={labelClass}>Call to Action</label>
+                <input id="ai-cta" type="text" value={node.data.callToAction || ''} onChange={(e) => updateData('callToAction', e.target.value)} placeholder="e.g. Book a 15-min demo call" className={inputClass} />
               </div>
               <div>
-                <label className={labelClass}>Language</label>
-                <select value={node.data.language || 'English'} onChange={(e) => updateData('language', e.target.value)} className={inputClass}>
+                <label htmlFor="ai-language" className={labelClass}>Language</label>
+                <select id="ai-language" value={node.data.language || 'English'} onChange={(e) => updateData('language', e.target.value)} className={inputClass}>
                   <option value="English">English</option>
                   <option value="Spanish">Spanish</option>
                   <option value="French">French</option>
@@ -181,16 +182,16 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
 
             {/* Prompt Template */}
             <div>
-              <label className={labelClass}>Prompt Template</label>
-              <textarea value={node.data.prompt || ''} onChange={(e) => updateData('prompt', e.target.value)} rows={4}
+              <label htmlFor="ai-prompt" className={labelClass}>Prompt Template</label>
+              <textarea id="ai-prompt" value={node.data.prompt || ''} onChange={(e) => updateData('prompt', e.target.value)} rows={4}
                 placeholder="Write a personalized email to {{name}} at {{company}}..." className={inputClass + ' resize-none'} />
               <p className="mt-1 text-xs text-zinc-400">Variables: {'{{name}}'}, {'{{email}}'}, {'{{company}}'}, {'{{title}}'}</p>
             </div>
 
             {/* Tone & Length */}
             <div>
-              <label className={labelClass}>Tone</label>
-              <select value={node.data.tone || 'professional'} onChange={(e) => updateData('tone', e.target.value)} className={inputClass}>
+              <label htmlFor="ai-tone" className={labelClass}>Tone</label>
+              <select id="ai-tone" value={node.data.tone || 'professional'} onChange={(e) => updateData('tone', e.target.value)} className={inputClass}>
                 <option value="professional">Professional</option>
                 <option value="friendly">Friendly & Warm</option>
                 <option value="casual">Casual</option>
@@ -203,8 +204,8 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
               </select>
             </div>
             <div>
-              <label className={labelClass}>Max Length (words)</label>
-              <input type="number" value={node.data.maxLength || 200} onChange={(e) => updateData('maxLength', Number(e.target.value))} min={50} max={500} className={inputClass} />
+              <label htmlFor="ai-maxLength" className={labelClass}>Max Length (words)</label>
+              <input id="ai-maxLength" type="number" value={node.data.maxLength || 200} onChange={(e) => updateData('maxLength', Number(e.target.value))} min={50} max={500} className={inputClass} />
             </div>
             <button
               onClick={() => setShowAIPreview(true)}
@@ -220,16 +221,16 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
         {node.type === 'emailNode' && (
           <>
             <div>
-              <label className={labelClass}>Subject Line</label>
-              <input type="text" value={node.data.subject || ''} onChange={(e) => updateData('subject', e.target.value)} placeholder="Quick question about {{company}}" className={inputClass} />
+              <label htmlFor="email-subject" className={labelClass}>Subject Line</label>
+              <input id="email-subject" type="text" value={node.data.subject || ''} onChange={(e) => updateData('subject', e.target.value)} placeholder="Quick question about {{company}}" className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>From Name</label>
-              <input type="text" value={node.data.fromName || ''} onChange={(e) => updateData('fromName', e.target.value)} placeholder="FlowReach AI" className={inputClass} />
+              <label htmlFor="email-fromName" className={labelClass}>From Name</label>
+              <input id="email-fromName" type="text" value={node.data.fromName || ''} onChange={(e) => updateData('fromName', e.target.value)} placeholder="FlowReach AI" className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>Credential</label>
-              <select value={node.data.credentialId || ''} onChange={(e) => updateData('credentialId', e.target.value)} className={inputClass}>
+              <label htmlFor="email-credential" className={labelClass}>Credential</label>
+              <select id="email-credential" value={node.data.credentialId || ''} onChange={(e) => updateData('credentialId', e.target.value)} className={inputClass}>
                 <option value="">None (log only)</option>
                 {credsByType('smtp').map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
@@ -241,12 +242,12 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
         {node.type === 'delayNode' && (
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className={labelClass}>Duration</label>
-              <input type="number" value={node.data.duration || 1} onChange={(e) => updateData('duration', Number(e.target.value))} min={1} max={365} className={inputClass} />
+              <label htmlFor="delay-duration" className={labelClass}>Duration</label>
+              <input id="delay-duration" type="number" value={node.data.duration || 1} onChange={(e) => updateData('duration', Number(e.target.value))} min={1} max={365} className={inputClass} />
             </div>
             <div className="flex-1">
-              <label className={labelClass}>Unit</label>
-              <select value={node.data.unit || 'days'} onChange={(e) => updateData('unit', e.target.value)} className={inputClass}>
+              <label htmlFor="delay-unit" className={labelClass}>Unit</label>
+              <select id="delay-unit" value={node.data.unit || 'days'} onChange={(e) => updateData('unit', e.target.value)} className={inputClass}>
                 <option value="seconds">Seconds</option>
                 <option value="minutes">Minutes</option>
                 <option value="hours">Hours</option>
@@ -260,8 +261,8 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
         {node.type === 'conditionNode' && (
           <>
             <div>
-              <label className={labelClass}>Field</label>
-              <select value={node.data.field || 'status'} onChange={(e) => updateData('field', e.target.value)} className={inputClass}>
+              <label htmlFor="cond-field" className={labelClass}>Field</label>
+              <select id="cond-field" value={node.data.field || 'status'} onChange={(e) => updateData('field', e.target.value)} className={inputClass}>
                 <option value="status">Lead Status</option>
                 <option value="email">Email</option>
                 <option value="company">Company</option>
@@ -271,8 +272,8 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
               </select>
             </div>
             <div>
-              <label className={labelClass}>Operator</label>
-              <select value={node.data.operator || 'equals'} onChange={(e) => updateData('operator', e.target.value)} className={inputClass}>
+              <label htmlFor="cond-operator" className={labelClass}>Operator</label>
+              <select id="cond-operator" value={node.data.operator || 'equals'} onChange={(e) => updateData('operator', e.target.value)} className={inputClass}>
                 <option value="equals">Equals</option>
                 <option value="not_equals">Not Equals</option>
                 <option value="contains">Contains</option>
@@ -284,9 +285,9 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
               </select>
             </div>
             <div>
-              <label className={labelClass}>Value</label>
+              <label htmlFor="cond-value" className={labelClass}>Value</label>
               {node.data.field === 'status' ? (
-                <select value={node.data.value || ''} onChange={(e) => updateData('value', e.target.value)} className={inputClass}>
+                <select id="cond-value" value={node.data.value || ''} onChange={(e) => updateData('value', e.target.value)} className={inputClass}>
                   <option value="new">New</option>
                   <option value="contacted">Contacted</option>
                   <option value="replied">Replied</option>
@@ -295,7 +296,7 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
                   <option value="unsubscribed">Unsubscribed</option>
                 </select>
               ) : (
-                <input type="text" value={node.data.value || ''} onChange={(e) => updateData('value', e.target.value)} placeholder="Enter value..." className={inputClass} />
+                <input id="cond-value" type="text" value={node.data.value || ''} onChange={(e) => updateData('value', e.target.value)} placeholder="Enter value..." className={inputClass} />
               )}
             </div>
             <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
@@ -307,8 +308,8 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
         {/* ===== UPDATE LEAD NODE ===== */}
         {node.type === 'updateLeadNode' && (
           <div>
-            <label className={labelClass}>Set Status To</label>
-            <select value={node.data.status || 'contacted'} onChange={(e) => updateData('status', e.target.value)} className={inputClass}>
+            <label htmlFor="update-status" className={labelClass}>Set Status To</label>
+            <select id="update-status" value={node.data.status || 'contacted'} onChange={(e) => updateData('status', e.target.value)} className={inputClass}>
               <option value="new">New</option>
               <option value="contacted">Contacted</option>
               <option value="replied">Replied</option>
@@ -330,8 +331,8 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
         {node.type === 'httpRequestNode' && (
           <>
             <div>
-              <label className={labelClass}>Method</label>
-              <select value={node.data.method || 'GET'} onChange={(e) => updateData('method', e.target.value)} className={inputClass}>
+              <label htmlFor="http-method" className={labelClass}>Method</label>
+              <select id="http-method" value={node.data.method || 'GET'} onChange={(e) => updateData('method', e.target.value)} className={inputClass}>
                 <option value="GET">GET</option>
                 <option value="POST">POST</option>
                 <option value="PUT">PUT</option>
@@ -340,24 +341,24 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
               </select>
             </div>
             <div>
-              <label className={labelClass}>URL</label>
-              <input type="text" value={node.data.url || ''} onChange={(e) => updateData('url', e.target.value)} placeholder="https://api.example.com/data" className={inputClass} />
+              <label htmlFor="http-url" className={labelClass}>URL</label>
+              <input id="http-url" type="text" value={node.data.url || ''} onChange={(e) => updateData('url', e.target.value)} placeholder="https://api.example.com/data" className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>Headers (JSON)</label>
-              <textarea value={node.data.headers || '{}'} onChange={(e) => updateData('headers', e.target.value)} rows={3}
+              <label htmlFor="http-headers" className={labelClass}>Headers (JSON)</label>
+              <textarea id="http-headers" value={node.data.headers || '{}'} onChange={(e) => updateData('headers', e.target.value)} rows={3}
                 placeholder='{"Authorization": "Bearer {{apiKey}}"}'
                 className={inputClass + ' resize-none font-mono text-xs'} />
             </div>
             <div>
-              <label className={labelClass}>Body (JSON)</label>
-              <textarea value={node.data.body || ''} onChange={(e) => updateData('body', e.target.value)} rows={3}
+              <label htmlFor="http-body" className={labelClass}>Body (JSON)</label>
+              <textarea id="http-body" value={node.data.body || ''} onChange={(e) => updateData('body', e.target.value)} rows={3}
                 placeholder='{"key": "value"}'
                 className={inputClass + ' resize-none font-mono text-xs'} />
             </div>
             <div>
-              <label className={labelClass}>Credential</label>
-              <select value={node.data.credentialId || ''} onChange={(e) => updateData('credentialId', e.target.value)} className={inputClass}>
+              <label htmlFor="http-credential" className={labelClass}>Credential</label>
+              <select id="http-credential" value={node.data.credentialId || ''} onChange={(e) => updateData('credentialId', e.target.value)} className={inputClass}>
                 <option value="">No Auth</option>
                 {credsByType('api_key').map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 {credsByType('bearer_token').map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -370,23 +371,23 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
         {node.type === 'webhookNode' && (
           <>
             <div>
-              <label className={labelClass}>Webhook Path</label>
+              <label htmlFor="webhook-path" className={labelClass}>Webhook Path</label>
               <div className="flex items-center">
                 <span className="text-xs text-zinc-400 mr-1">/webhook/</span>
-                <input type="text" value={node.data.path || ''} onChange={(e) => updateData('path', e.target.value)} placeholder="my-hook" className={inputClass} />
+                <input id="webhook-path" type="text" value={node.data.path || ''} onChange={(e) => updateData('path', e.target.value)} placeholder="my-hook" className={inputClass} />
               </div>
             </div>
             <div>
-              <label className={labelClass}>HTTP Method</label>
-              <select value={node.data.httpMethod || 'POST'} onChange={(e) => updateData('httpMethod', e.target.value)} className={inputClass}>
+              <label htmlFor="webhook-httpMethod" className={labelClass}>HTTP Method</label>
+              <select id="webhook-httpMethod" value={node.data.httpMethod || 'POST'} onChange={(e) => updateData('httpMethod', e.target.value)} className={inputClass}>
                 <option value="GET">GET</option>
                 <option value="POST">POST</option>
                 <option value="PUT">PUT</option>
               </select>
             </div>
             <div>
-              <label className={labelClass}>Response Message</label>
-              <input type="text" value={node.data.responseMessage || ''} onChange={(e) => updateData('responseMessage', e.target.value)} placeholder="Webhook received" className={inputClass} />
+              <label htmlFor="webhook-response" className={labelClass}>Response Message</label>
+              <input id="webhook-response" type="text" value={node.data.responseMessage || ''} onChange={(e) => updateData('responseMessage', e.target.value)} placeholder="Webhook received" className={inputClass} />
             </div>
           </>
         )}
@@ -395,8 +396,8 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
         {node.type === 'aiAgentNode' && (
           <>
             <div>
-              <label className={labelClass}>AI Provider</label>
-              <select value={node.data.provider || 'groq'} onChange={(e) => {
+              <label htmlFor="agent-provider" className={labelClass}>AI Provider</label>
+              <select id="agent-provider" value={node.data.provider || 'groq'} onChange={(e) => {
                 updateData('provider', e.target.value);
                 const models = aiProviders[e.target.value]?.models || [];
                 updateData('model', models[0] || '');
@@ -407,16 +408,16 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
               </select>
             </div>
             <div>
-              <label className={labelClass}>Model</label>
-              <select value={node.data.model || ''} onChange={(e) => updateData('model', e.target.value)} className={inputClass}>
+              <label htmlFor="agent-model" className={labelClass}>Model</label>
+              <select id="agent-model" value={node.data.model || ''} onChange={(e) => updateData('model', e.target.value)} className={inputClass}>
                 {(aiProviders[node.data.provider || 'groq']?.models || []).map(m => (
                   <option key={m} value={m}>{m}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className={labelClass}>Credential</label>
-              <select value={node.data.credentialId || ''} onChange={(e) => updateData('credentialId', e.target.value)} className={inputClass}>
+              <label htmlFor="agent-credential" className={labelClass}>Credential</label>
+              <select id="agent-credential" value={node.data.credentialId || ''} onChange={(e) => updateData('credentialId', e.target.value)} className={inputClass}>
                 <option value="">Select API Key...</option>
                 {credsByType(node.data.provider || 'groq').map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
@@ -425,19 +426,19 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
               </p>
             </div>
             <div>
-              <label className={labelClass}>System Prompt</label>
-              <textarea value={node.data.systemPrompt || ''} onChange={(e) => updateData('systemPrompt', e.target.value)} rows={3}
+              <label htmlFor="agent-systemPrompt" className={labelClass}>System Prompt</label>
+              <textarea id="agent-systemPrompt" value={node.data.systemPrompt || ''} onChange={(e) => updateData('systemPrompt', e.target.value)} rows={3}
                 placeholder="You are a helpful assistant that..." className={inputClass + ' resize-none'} />
             </div>
             <div>
-              <label className={labelClass}>User Prompt</label>
-              <textarea value={node.data.userPrompt || ''} onChange={(e) => updateData('userPrompt', e.target.value)} rows={3}
+              <label htmlFor="agent-userPrompt" className={labelClass}>User Prompt</label>
+              <textarea id="agent-userPrompt" value={node.data.userPrompt || ''} onChange={(e) => updateData('userPrompt', e.target.value)} rows={3}
                 placeholder="Analyze this lead data: {{name}}, {{company}}" className={inputClass + ' resize-none'} />
               <p className="mt-1 text-xs text-zinc-400">Variables: {'{{name}}'}, {'{{email}}'}, {'{{company}}'}, {'{{title}}'}</p>
             </div>
             <div>
-              <label className={labelClass}>Temperature</label>
-              <input type="range" min={0} max={2} step={0.1} value={node.data.temperature ?? 0.7}
+              <label htmlFor="agent-temperature" className={labelClass}>Temperature</label>
+              <input id="agent-temperature" type="range" min={0} max={2} step={0.1} value={node.data.temperature ?? 0.7}
                 onChange={(e) => updateData('temperature', Number(e.target.value))}
                 className="w-full accent-purple-500" />
               <div className="flex justify-between text-xs text-zinc-400">
@@ -447,8 +448,8 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
               </div>
             </div>
             <div>
-              <label className={labelClass}>Max Tokens</label>
-              <input type="number" value={node.data.maxTokens || 1024} onChange={(e) => updateData('maxTokens', Number(e.target.value))} min={64} max={8192} className={inputClass} />
+              <label htmlFor="agent-maxTokens" className={labelClass}>Max Tokens</label>
+              <input id="agent-maxTokens" type="number" value={node.data.maxTokens || 1024} onChange={(e) => updateData('maxTokens', Number(e.target.value))} min={64} max={8192} className={inputClass} />
             </div>
           </>
         )}
@@ -457,15 +458,15 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
         {node.type === 'codeNode' && (
           <>
             <div>
-              <label className={labelClass}>Language</label>
-              <select value={node.data.language || 'javascript'} onChange={(e) => updateData('language', e.target.value)} className={inputClass}>
+              <label htmlFor="code-language" className={labelClass}>Language</label>
+              <select id="code-language" value={node.data.language || 'javascript'} onChange={(e) => updateData('language', e.target.value)} className={inputClass}>
                 <option value="javascript">JavaScript</option>
                 <option value="python">Python</option>
               </select>
             </div>
             <div>
-              <label className={labelClass}>Code</label>
-              <textarea value={node.data.code || ''} onChange={(e) => updateData('code', e.target.value)} rows={8}
+              <label htmlFor="code-editor" className={labelClass}>Code</label>
+              <textarea id="code-editor" value={node.data.code || ''} onChange={(e) => updateData('code', e.target.value)} rows={8}
                 placeholder={node.data.language === 'python' ? '# Access data with input_data\nresult = {"output": input_data["name"]}' : '// Access data with inputData\nreturn { output: inputData.name };'}
                 className={inputClass + ' resize-none font-mono text-xs'} />
               <p className="mt-1 text-xs text-zinc-400">Input data is available as {node.data.language === 'python' ? 'input_data' : 'inputData'}</p>
@@ -477,8 +478,8 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
         {node.type === 'filterNode' && (
           <>
             <div>
-              <label className={labelClass}>Filter Field</label>
-              <select value={node.data.filterField || 'status'} onChange={(e) => updateData('filterField', e.target.value)} className={inputClass}>
+              <label htmlFor="filter-field" className={labelClass}>Filter Field</label>
+              <select id="filter-field" value={node.data.filterField || 'status'} onChange={(e) => updateData('filterField', e.target.value)} className={inputClass}>
                 <option value="status">Lead Status</option>
                 <option value="email">Email</option>
                 <option value="company">Company</option>
@@ -488,8 +489,8 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
               </select>
             </div>
             <div>
-              <label className={labelClass}>Operator</label>
-              <select value={node.data.filterOp || 'equals'} onChange={(e) => updateData('filterOp', e.target.value)} className={inputClass}>
+              <label htmlFor="filter-operator" className={labelClass}>Operator</label>
+              <select id="filter-operator" value={node.data.filterOp || 'equals'} onChange={(e) => updateData('filterOp', e.target.value)} className={inputClass}>
                 <option value="equals">Equals</option>
                 <option value="not_equals">Not Equals</option>
                 <option value="contains">Contains</option>
@@ -499,8 +500,8 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
               </select>
             </div>
             <div>
-              <label className={labelClass}>Value</label>
-              <input type="text" value={node.data.filterValue || ''} onChange={(e) => updateData('filterValue', e.target.value)} placeholder="Filter value..." className={inputClass} />
+              <label htmlFor="filter-value" className={labelClass}>Value</label>
+              <input id="filter-value" type="text" value={node.data.filterValue || ''} onChange={(e) => updateData('filterValue', e.target.value)} placeholder="Filter value..." className={inputClass} />
             </div>
             <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
               <p className="text-xs text-indigo-700"><strong>Match (left):</strong> Passes filter<br /><strong>No Match (right):</strong> Does not pass</p>
@@ -511,8 +512,8 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
         {/* ===== MERGE NODE ===== */}
         {node.type === 'mergeNode' && (
           <div>
-            <label className={labelClass}>Merge Mode</label>
-            <select value={node.data.mode || 'append'} onChange={(e) => updateData('mode', e.target.value)} className={inputClass}>
+            <label htmlFor="merge-mode" className={labelClass}>Merge Mode</label>
+            <select id="merge-mode" value={node.data.mode || 'append'} onChange={(e) => updateData('mode', e.target.value)} className={inputClass}>
               <option value="append">Append (combine all)</option>
               <option value="keep_first">Keep First Input</option>
               <option value="keep_last">Keep Last Input</option>
@@ -520,8 +521,8 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
             </select>
             {node.data.mode === 'merge_by_key' && (
               <div className="mt-3">
-                <label className={labelClass}>Merge Key Field</label>
-                <input type="text" value={node.data.mergeKey || ''} onChange={(e) => updateData('mergeKey', e.target.value)} placeholder="email" className={inputClass} />
+                <label htmlFor="merge-key" className={labelClass}>Merge Key Field</label>
+                <input id="merge-key" type="text" value={node.data.mergeKey || ''} onChange={(e) => updateData('mergeKey', e.target.value)} placeholder="email" className={inputClass} />
               </div>
             )}
           </div>
@@ -531,8 +532,8 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
         {node.type === 'splitNode' && (
           <>
             <div>
-              <label className={labelClass}>Split Mode</label>
-              <select value={node.data.splitMode || 'round_robin'} onChange={(e) => updateData('splitMode', e.target.value)} className={inputClass}>
+              <label htmlFor="split-mode" className={labelClass}>Split Mode</label>
+              <select id="split-mode" value={node.data.splitMode || 'round_robin'} onChange={(e) => updateData('splitMode', e.target.value)} className={inputClass}>
                 <option value="round_robin">Round Robin</option>
                 <option value="percentage">Percentage Split</option>
                 <option value="by_field">By Field Value</option>
@@ -540,15 +541,15 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
             </div>
             {node.data.splitMode === 'percentage' && (
               <div>
-                <label className={labelClass}>Output A Percentage</label>
-                <input type="number" value={node.data.percentage || 50} onChange={(e) => updateData('percentage', Number(e.target.value))} min={1} max={99} className={inputClass} />
+                <label htmlFor="split-percentage" className={labelClass}>Output A Percentage</label>
+                <input id="split-percentage" type="number" value={node.data.percentage || 50} onChange={(e) => updateData('percentage', Number(e.target.value))} min={1} max={99} className={inputClass} />
                 <p className="mt-1 text-xs text-zinc-400">Output B gets {100 - (node.data.percentage || 50)}%</p>
               </div>
             )}
             {node.data.splitMode === 'by_field' && (
               <div>
-                <label className={labelClass}>Split Field</label>
-                <input type="text" value={node.data.splitField || ''} onChange={(e) => updateData('splitField', e.target.value)} placeholder="status" className={inputClass} />
+                <label htmlFor="split-field" className={labelClass}>Split Field</label>
+                <input id="split-field" type="text" value={node.data.splitField || ''} onChange={(e) => updateData('splitField', e.target.value)} placeholder="status" className={inputClass} />
               </div>
             )}
           </>
@@ -558,8 +559,8 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
         {node.type === 'scheduleNode' && (
           <>
             <div>
-              <label className={labelClass}>Interval</label>
-              <select value={node.data.interval || 'daily'} onChange={(e) => updateData('interval', e.target.value)} className={inputClass}>
+              <label htmlFor="schedule-interval" className={labelClass}>Interval</label>
+              <select id="schedule-interval" value={node.data.interval || 'daily'} onChange={(e) => updateData('interval', e.target.value)} className={inputClass}>
                 <option value="every_minute">Every Minute</option>
                 <option value="every_5_minutes">Every 5 Minutes</option>
                 <option value="every_15_minutes">Every 15 Minutes</option>
@@ -572,15 +573,15 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
             </div>
             {node.data.interval === 'cron' && (
               <div>
-                <label className={labelClass}>Cron Expression</label>
-                <input type="text" value={node.data.cron || ''} onChange={(e) => updateData('cron', e.target.value)} placeholder="0 9 * * 1-5" className={inputClass + ' font-mono'} />
+                <label htmlFor="schedule-cron" className={labelClass}>Cron Expression</label>
+                <input id="schedule-cron" type="text" value={node.data.cron || ''} onChange={(e) => updateData('cron', e.target.value)} placeholder="0 9 * * 1-5" className={inputClass + ' font-mono'} />
                 <p className="mt-1 text-xs text-zinc-400">Example: 0 9 * * 1-5 = Mon-Fri at 9am</p>
               </div>
             )}
             {node.data.interval === 'daily' && (
               <div>
-                <label className={labelClass}>Time (HH:MM)</label>
-                <input type="time" value={node.data.time || '09:00'} onChange={(e) => updateData('time', e.target.value)} className={inputClass} />
+                <label htmlFor="schedule-time" className={labelClass}>Time (HH:MM)</label>
+                <input id="schedule-time" type="time" value={node.data.time || '09:00'} onChange={(e) => updateData('time', e.target.value)} className={inputClass} />
               </div>
             )}
           </>
@@ -590,15 +591,15 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
         {node.type === 'summarizerNode' && (
           <>
             <div>
-              <label className={labelClass}>Credential (AI Provider)</label>
-              <select value={node.data.credentialId || ''} onChange={(e) => updateData('credentialId', e.target.value)} className={inputClass}>
+              <label htmlFor="summarizer-credential" className={labelClass}>Credential (AI Provider)</label>
+              <select id="summarizer-credential" value={node.data.credentialId || ''} onChange={(e) => updateData('credentialId', e.target.value)} className={inputClass}>
                 <option value="">Select API Key...</option>
                 {Object.keys(aiProviders).flatMap(p => credsByType(p)).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div>
-              <label className={labelClass}>Summary Style</label>
-              <select value={node.data.style || 'bullets'} onChange={(e) => updateData('style', e.target.value)} className={inputClass}>
+              <label htmlFor="summarizer-style" className={labelClass}>Summary Style</label>
+              <select id="summarizer-style" value={node.data.style || 'bullets'} onChange={(e) => updateData('style', e.target.value)} className={inputClass}>
                 <option value="bullets">Bullet Points</option>
                 <option value="paragraph">Paragraph</option>
                 <option value="tldr">TL;DR (one line)</option>
@@ -606,8 +607,8 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
               </select>
             </div>
             <div>
-              <label className={labelClass}>Max Output Length (words)</label>
-              <input type="number" value={node.data.outputLength || 100} onChange={(e) => updateData('outputLength', Number(e.target.value))} min={10} max={500} className={inputClass} />
+              <label htmlFor="summarizer-outputLength" className={labelClass}>Max Output Length (words)</label>
+              <input id="summarizer-outputLength" type="number" value={node.data.outputLength || 100} onChange={(e) => updateData('outputLength', Number(e.target.value))} min={10} max={500} className={inputClass} />
             </div>
           </>
         )}
@@ -616,20 +617,20 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
         {node.type === 'classifierNode' && (
           <>
             <div>
-              <label className={labelClass}>Credential (AI Provider)</label>
-              <select value={node.data.credentialId || ''} onChange={(e) => updateData('credentialId', e.target.value)} className={inputClass}>
+              <label htmlFor="classifier-credential" className={labelClass}>Credential (AI Provider)</label>
+              <select id="classifier-credential" value={node.data.credentialId || ''} onChange={(e) => updateData('credentialId', e.target.value)} className={inputClass}>
                 <option value="">Select API Key...</option>
                 {Object.keys(aiProviders).flatMap(p => credsByType(p)).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div>
-              <label className={labelClass}>Categories (comma-separated)</label>
-              <input type="text" value={(node.data.categories || []).join(', ')} onChange={(e) => updateData('categories', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+              <label htmlFor="classifier-categories" className={labelClass}>Categories (comma-separated)</label>
+              <input id="classifier-categories" type="text" value={(node.data.categories || []).join(', ')} onChange={(e) => updateData('categories', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
                 placeholder="hot_lead, warm_lead, cold_lead" className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>Classification Prompt</label>
-              <textarea value={node.data.classifyPrompt || ''} onChange={(e) => updateData('classifyPrompt', e.target.value)} rows={3}
+              <label htmlFor="classifier-prompt" className={labelClass}>Classification Prompt</label>
+              <textarea id="classifier-prompt" value={node.data.classifyPrompt || ''} onChange={(e) => updateData('classifyPrompt', e.target.value)} rows={3}
                 placeholder="Classify this lead based on their title and company..." className={inputClass + ' resize-none'} />
             </div>
           </>
@@ -639,19 +640,19 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
         {node.type === 'slackNode' && (
           <>
             <div>
-              <label className={labelClass}>Credential</label>
-              <select value={node.data.credentialId || ''} onChange={(e) => updateData('credentialId', e.target.value)} className={inputClass}>
+              <label htmlFor="slack-credential" className={labelClass}>Credential</label>
+              <select id="slack-credential" value={node.data.credentialId || ''} onChange={(e) => updateData('credentialId', e.target.value)} className={inputClass}>
                 <option value="">Select Slack Token...</option>
                 {credsByType('slack').map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div>
-              <label className={labelClass}>Channel</label>
-              <input type="text" value={node.data.channel || ''} onChange={(e) => updateData('channel', e.target.value)} placeholder="general" className={inputClass} />
+              <label htmlFor="slack-channel" className={labelClass}>Channel</label>
+              <input id="slack-channel" type="text" value={node.data.channel || ''} onChange={(e) => updateData('channel', e.target.value)} placeholder="general" className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>Message</label>
-              <textarea value={node.data.message || ''} onChange={(e) => updateData('message', e.target.value)} rows={3}
+              <label htmlFor="slack-message" className={labelClass}>Message</label>
+              <textarea id="slack-message" value={node.data.message || ''} onChange={(e) => updateData('message', e.target.value)} rows={3}
                 placeholder="New lead: {{name}} from {{company}}" className={inputClass + ' resize-none'} />
               <p className="mt-1 text-xs text-zinc-400">Variables: {'{{name}}'}, {'{{email}}'}, {'{{company}}'}, {'{{title}}'}</p>
             </div>
@@ -662,19 +663,19 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
         {node.type === 'smsNode' && (
           <>
             <div>
-              <label className={labelClass}>Credential</label>
-              <select value={node.data.credentialId || ''} onChange={(e) => updateData('credentialId', e.target.value)} className={inputClass}>
+              <label htmlFor="sms-credential" className={labelClass}>Credential</label>
+              <select id="sms-credential" value={node.data.credentialId || ''} onChange={(e) => updateData('credentialId', e.target.value)} className={inputClass}>
                 <option value="">Select SMS Provider...</option>
                 {credsByType('twilio').map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div>
-              <label className={labelClass}>To Number</label>
-              <input type="text" value={node.data.to || ''} onChange={(e) => updateData('to', e.target.value)} placeholder="+1234567890 or {{phone}}" className={inputClass} />
+              <label htmlFor="sms-to" className={labelClass}>To Number</label>
+              <input id="sms-to" type="text" value={node.data.to || ''} onChange={(e) => updateData('to', e.target.value)} placeholder="+1234567890 or {{phone}}" className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>Message</label>
-              <textarea value={node.data.smsMessage || ''} onChange={(e) => updateData('smsMessage', e.target.value)} rows={3}
+              <label htmlFor="sms-message" className={labelClass}>Message</label>
+              <textarea id="sms-message" value={node.data.smsMessage || ''} onChange={(e) => updateData('smsMessage', e.target.value)} rows={3}
                 placeholder="Hi {{name}}, follow up on our conversation..." className={inputClass + ' resize-none'} />
             </div>
           </>
@@ -690,3 +691,13 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
     </div>
   );
 }
+
+NodeConfigPanel.propTypes = {
+  node: PropTypes.shape({
+    id: PropTypes.string,
+    type: PropTypes.string,
+    data: PropTypes.object,
+  }).isRequired,
+  onClose: PropTypes.func.isRequired,
+  onUpdate: PropTypes.func.isRequired,
+};

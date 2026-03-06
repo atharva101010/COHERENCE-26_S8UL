@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, Upload } from 'lucide-react';
+import { Users, Upload, Download } from 'lucide-react';
 import LeadsTable from '../components/LeadsTable';
 import LeadImport from '../components/LeadImport';
 
@@ -7,6 +7,13 @@ const TABS = [
   { id: 'all', label: 'All Leads', icon: Users },
   { id: 'import', label: 'Import', icon: Upload },
 ];
+
+const sampleCSV = `name,email,company,title,status
+Aarav Sharma,aarav@techcorp.io,TechCorp India,CEO,new
+Ishita Patel,ishita@innovatelabs.io,InnovateLabs,CTO,new
+Rohan Gupta,rohan@cloudpulse.io,CloudPulse AI,VP Engineering,contacted
+Priya Singh,priya@datavista.io,DataVista,Product Manager,new
+Vikram Kumar,vikram@nexaflow.io,NexaFlow,Director of Sales,replied`;
 
 export default function Leads() {
   const [activeTab, setActiveTab] = useState('all');
@@ -17,6 +24,16 @@ export default function Leads() {
     setActiveTab('all');
   };
 
+  const downloadSampleCSV = () => {
+    const blob = new Blob([sampleCSV], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'sample-leads.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -24,6 +41,12 @@ export default function Leads() {
           <Users className="w-6 h-6 text-indigo-600" />
           <h2 className="text-2xl font-bold text-zinc-900">Leads</h2>
         </div>
+        <button
+          onClick={downloadSampleCSV}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-50 hover:border-zinc-300 transition-colors"
+        >
+          <Download className="w-3.5 h-3.5" /> Download Sample CSV
+        </button>
       </div>
 
       {/* Tabs */}

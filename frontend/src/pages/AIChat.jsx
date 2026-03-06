@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import {
   Send, Bot, User, Sparkles, Loader2, Wand2, GitBranch,
   Copy, Check, RefreshCw, Trash2, ChevronRight, Mail, Building2,
-  UserCircle, Target, Globe, Pen
+  Target, Pen
 } from 'lucide-react';
 import { chatWithAI, createWorkflowWithAI } from '../lib/supabaseService';
 import { useNavigate } from 'react-router-dom';
@@ -191,7 +191,7 @@ export default function AIChat() {
             {/* Messages */}
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
               {messages.map((msg, idx) => (
-                <div key={idx} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+                <div key={`msg-${msg.role}-${idx}`} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
                   {msg.role === 'assistant' && (
                     <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
                       <Bot className="w-4 h-4 text-white" />
@@ -199,11 +199,11 @@ export default function AIChat() {
                   )}
                   <div className={`max-w-[75%] group ${msg.role === 'user' ? 'order-first' : ''}`}>
                     <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
-                      msg.role === 'user'
-                        ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white'
-                        : msg.error
-                          ? 'bg-red-50 text-red-700 border border-red-200'
-                          : 'bg-zinc-50 text-zinc-800 border border-zinc-200/60'
+                      (() => {
+                        if (msg.role === 'user') return 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white';
+                        if (msg.error) return 'bg-red-50 text-red-700 border border-red-200';
+                        return 'bg-zinc-50 text-zinc-800 border border-zinc-200/60';
+                      })()
                     }`}>
                       {msg.content}
                     </div>
@@ -285,9 +285,9 @@ export default function AIChat() {
                 Quick Prompts
               </h4>
               <div className="space-y-2">
-                {QUICK_PROMPTS.map((qp, i) => (
+                {QUICK_PROMPTS.map((qp) => (
                   <button
-                    key={i}
+                    key={qp.label}
                     onClick={() => sendMessage(qp.prompt)}
                     disabled={loading}
                     className="w-full flex items-center gap-2 p-2.5 rounded-lg border border-zinc-200 text-left text-xs text-zinc-700 hover:bg-violet-50 hover:border-violet-200 hover:text-violet-700 transition-all disabled:opacity-50"
@@ -316,8 +316,9 @@ export default function AIChat() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-2">Describe your workflow</label>
+                <label htmlFor="wf-description" className="block text-sm font-medium text-zinc-700 mb-2">Describe your workflow</label>
                 <textarea
+                  id="wf-description"
                   value={wfDescription}
                   onChange={(e) => setWfDescription(e.target.value)}
                   placeholder="e.g., Send a personalized cold email to leads, wait 3 days, check if they replied, if yes mark as converted, if no send a follow-up email..."
@@ -347,9 +348,9 @@ export default function AIChat() {
               Try These Ideas
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {WORKFLOW_PROMPTS.map((wp, i) => (
+              {WORKFLOW_PROMPTS.map((wp) => (
                 <button
-                  key={i}
+                  key={wp.label}
                   onClick={() => setWfDescription(wp.label + ': ' + wp.desc)}
                   className="flex flex-col items-start p-4 rounded-xl border border-zinc-200 hover:bg-violet-50 hover:border-violet-200 transition-all text-left"
                 >
@@ -385,23 +386,23 @@ export default function AIChat() {
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-zinc-600 mb-1">Recipient Name</label>
-                    <input type="text" value={genForm.recipientName} onChange={(e) => setGenForm(f => ({ ...f, recipientName: e.target.value }))}
+                    <label htmlFor="gen-recipientName" className="block text-xs font-medium text-zinc-600 mb-1">Recipient Name</label>
+                    <input id="gen-recipientName" type="text" value={genForm.recipientName} onChange={(e) => setGenForm(f => ({ ...f, recipientName: e.target.value }))}
                       placeholder="e.g. Ishita" className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-zinc-600 mb-1">Email</label>
-                    <input type="email" value={genForm.recipientEmail} onChange={(e) => setGenForm(f => ({ ...f, recipientEmail: e.target.value }))}
+                    <label htmlFor="gen-recipientEmail" className="block text-xs font-medium text-zinc-600 mb-1">Email</label>
+                    <input id="gen-recipientEmail" type="email" value={genForm.recipientEmail} onChange={(e) => setGenForm(f => ({ ...f, recipientEmail: e.target.value }))}
                       placeholder="e.g. ishita@company.com" className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-zinc-600 mb-1">Company</label>
-                    <input type="text" value={genForm.recipientCompany} onChange={(e) => setGenForm(f => ({ ...f, recipientCompany: e.target.value }))}
+                    <label htmlFor="gen-recipientCompany" className="block text-xs font-medium text-zinc-600 mb-1">Company</label>
+                    <input id="gen-recipientCompany" type="text" value={genForm.recipientCompany} onChange={(e) => setGenForm(f => ({ ...f, recipientCompany: e.target.value }))}
                       placeholder="e.g. TechCorp" className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-zinc-600 mb-1">Title / Role</label>
-                    <input type="text" value={genForm.recipientTitle} onChange={(e) => setGenForm(f => ({ ...f, recipientTitle: e.target.value }))}
+                    <label htmlFor="gen-recipientTitle" className="block text-xs font-medium text-zinc-600 mb-1">Title / Role</label>
+                    <input id="gen-recipientTitle" type="text" value={genForm.recipientTitle} onChange={(e) => setGenForm(f => ({ ...f, recipientTitle: e.target.value }))}
                       placeholder="e.g. VP of Marketing" className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
                   </div>
                 </div>
@@ -414,19 +415,19 @@ export default function AIChat() {
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-zinc-600 mb-1">Your Name</label>
-                    <input type="text" value={genForm.senderName} onChange={(e) => setGenForm(f => ({ ...f, senderName: e.target.value }))}
+                    <label htmlFor="gen-senderName" className="block text-xs font-medium text-zinc-600 mb-1">Your Name</label>
+                    <input id="gen-senderName" type="text" value={genForm.senderName} onChange={(e) => setGenForm(f => ({ ...f, senderName: e.target.value }))}
                       placeholder="e.g. Alex Johnson" className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-zinc-600 mb-1">Your Company</label>
-                    <input type="text" value={genForm.companyName} onChange={(e) => setGenForm(f => ({ ...f, companyName: e.target.value }))}
+                    <label htmlFor="gen-companyName" className="block text-xs font-medium text-zinc-600 mb-1">Your Company</label>
+                    <input id="gen-companyName" type="text" value={genForm.companyName} onChange={(e) => setGenForm(f => ({ ...f, companyName: e.target.value }))}
                       placeholder="e.g. FlowReach AI" className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-zinc-600 mb-1">Signature</label>
-                  <textarea value={genForm.signature} onChange={(e) => setGenForm(f => ({ ...f, signature: e.target.value }))} rows={2}
+                  <label htmlFor="gen-signature" className="block text-xs font-medium text-zinc-600 mb-1">Signature</label>
+                  <textarea id="gen-signature" value={genForm.signature} onChange={(e) => setGenForm(f => ({ ...f, signature: e.target.value }))} rows={2}
                     placeholder="Best regards,&#10;Alex Johnson, CEO at FlowReach AI" className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none" />
                 </div>
               </div>
@@ -438,8 +439,8 @@ export default function AIChat() {
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-zinc-600 mb-1">Message Type</label>
-                    <select value={genForm.messageType} onChange={(e) => setGenForm(f => ({ ...f, messageType: e.target.value }))}
+                    <label htmlFor="gen-messageType" className="block text-xs font-medium text-zinc-600 mb-1">Message Type</label>
+                    <select id="gen-messageType" value={genForm.messageType} onChange={(e) => setGenForm(f => ({ ...f, messageType: e.target.value }))}
                       className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
                       <option value="outreach_email">Outreach Email</option>
                       <option value="follow_up">Follow-up Email</option>
@@ -452,8 +453,8 @@ export default function AIChat() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-zinc-600 mb-1">Tone</label>
-                    <select value={genForm.tone} onChange={(e) => setGenForm(f => ({ ...f, tone: e.target.value }))}
+                    <label htmlFor="gen-tone" className="block text-xs font-medium text-zinc-600 mb-1">Tone</label>
+                    <select id="gen-tone" value={genForm.tone} onChange={(e) => setGenForm(f => ({ ...f, tone: e.target.value }))}
                       className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
                       <option value="professional">Professional</option>
                       <option value="friendly">Friendly & Warm</option>
@@ -467,13 +468,13 @@ export default function AIChat() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-zinc-600 mb-1">Target Industry</label>
-                    <input type="text" value={genForm.industry} onChange={(e) => setGenForm(f => ({ ...f, industry: e.target.value }))}
+                    <label htmlFor="gen-industry" className="block text-xs font-medium text-zinc-600 mb-1">Target Industry</label>
+                    <input id="gen-industry" type="text" value={genForm.industry} onChange={(e) => setGenForm(f => ({ ...f, industry: e.target.value }))}
                       placeholder="e.g. SaaS, Healthcare, FinTech" className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-zinc-600 mb-1">Language</label>
-                    <select value={genForm.language} onChange={(e) => setGenForm(f => ({ ...f, language: e.target.value }))}
+                    <label htmlFor="gen-language" className="block text-xs font-medium text-zinc-600 mb-1">Language</label>
+                    <select id="gen-language" value={genForm.language} onChange={(e) => setGenForm(f => ({ ...f, language: e.target.value }))}
                       className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
                       <option value="English">English</option>
                       <option value="Spanish">Spanish</option>
@@ -486,28 +487,28 @@ export default function AIChat() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-zinc-600 mb-1">Pain Points to Address</label>
-                  <textarea value={genForm.painPoints} onChange={(e) => setGenForm(f => ({ ...f, painPoints: e.target.value }))} rows={2}
+                  <label htmlFor="gen-painPoints" className="block text-xs font-medium text-zinc-600 mb-1">Pain Points to Address</label>
+                  <textarea id="gen-painPoints" value={genForm.painPoints} onChange={(e) => setGenForm(f => ({ ...f, painPoints: e.target.value }))} rows={2}
                     placeholder="e.g. Manual outreach is slow, low response rates, no personalization at scale" className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-zinc-600 mb-1">Call to Action</label>
-                  <input type="text" value={genForm.callToAction} onChange={(e) => setGenForm(f => ({ ...f, callToAction: e.target.value }))}
+                  <label htmlFor="gen-cta" className="block text-xs font-medium text-zinc-600 mb-1">Call to Action</label>
+                  <input id="gen-cta" type="text" value={genForm.callToAction} onChange={(e) => setGenForm(f => ({ ...f, callToAction: e.target.value }))}
                     placeholder="e.g. Book a 15-min demo call" className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
                 </div>
               </div>
 
               {/* Prompt */}
               <div>
-                <label className="block text-xs font-medium text-zinc-600 mb-1">Prompt Template</label>
-                <textarea value={genForm.prompt} onChange={(e) => setGenForm(f => ({ ...f, prompt: e.target.value }))} rows={3}
+                <label htmlFor="gen-prompt" className="block text-xs font-medium text-zinc-600 mb-1">Prompt Template</label>
+                <textarea id="gen-prompt" value={genForm.prompt} onChange={(e) => setGenForm(f => ({ ...f, prompt: e.target.value }))} rows={3}
                   placeholder="Write a personalized email to {{name}} at {{company}}..." className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none" />
                 <p className="mt-1 text-xs text-zinc-400">Variables: {'{{name}}'}, {'{{email}}'}, {'{{company}}'}, {'{{title}}'}</p>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-zinc-600 mb-1">Max Length (words)</label>
-                <input type="number" value={genForm.maxLength} onChange={(e) => setGenForm(f => ({ ...f, maxLength: Number(e.target.value) }))}
+                <label htmlFor="gen-maxLength" className="block text-xs font-medium text-zinc-600 mb-1">Max Length (words)</label>
+                <input id="gen-maxLength" type="number" value={genForm.maxLength} onChange={(e) => setGenForm(f => ({ ...f, maxLength: Number(e.target.value) }))}
                   min={50} max={500} className="w-32 px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
               </div>
 

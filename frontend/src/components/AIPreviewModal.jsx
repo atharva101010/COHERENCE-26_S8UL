@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import PropTypes from 'prop-types';
 import { X, Sparkles, Mail, User, Building2, Loader2, RefreshCw, Copy, Check, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -127,7 +128,7 @@ export default function AIPreviewModal({ isOpen, onClose, nodeData }) {
             )}
             {nodeData.messageType && (
               <span>
-                Type: <strong className="text-zinc-800">{nodeData.messageType.replace(/_/g, ' ')}</strong>
+                Type: <strong className="text-zinc-800">{nodeData.messageType.replaceAll('_', ' ')}</strong>
               </span>
             )}
           </div>
@@ -226,7 +227,7 @@ export default function AIPreviewModal({ isOpen, onClose, nodeData }) {
         {/* Footer */}
         <div className="px-6 py-3 border-t border-zinc-200 bg-zinc-50 rounded-b-2xl flex items-center justify-between">
           <p className="text-xs text-zinc-400">
-            {previews.length} preview{previews.length !== 1 ? 's' : ''} generated
+            {previews.length} preview{previews.length === 1 ? '' : 's'} generated
             {source === 'mock' && ' • Add a Groq API key in Settings for real AI generation'}
           </p>
           <button
@@ -240,3 +241,23 @@ export default function AIPreviewModal({ isOpen, onClose, nodeData }) {
     </div>
   );
 }
+
+AIPreviewModal.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  nodeData: PropTypes.shape({
+    prompt: PropTypes.string,
+    tone: PropTypes.string,
+    maxLength: PropTypes.number,
+    credentialId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    model: PropTypes.string,
+    companyName: PropTypes.string,
+    senderName: PropTypes.string,
+    industry: PropTypes.string,
+    painPoints: PropTypes.string,
+    callToAction: PropTypes.string,
+    signature: PropTypes.string,
+    language: PropTypes.string,
+    messageType: PropTypes.string,
+  }).isRequired,
+};

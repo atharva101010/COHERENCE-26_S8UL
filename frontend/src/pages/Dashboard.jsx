@@ -84,11 +84,13 @@ CustomTooltip.propTypes = {
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   const fetchStats = useCallback(async () => {
     try {
       const data = await fetchStatsOverview();
       setStats(data);
+      setLastUpdated(new Date());
     } catch {
       // silent fail — dashboard will show skeletons
     } finally {
@@ -141,13 +143,20 @@ export default function Dashboard() {
           <h2 className="text-2xl font-bold text-zinc-900">Dashboard</h2>
           <p className="text-sm text-zinc-500 mt-1">Your outreach performance at a glance</p>
         </div>
-        <button
-          onClick={fetchStats}
-          className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-600 hover:text-zinc-800 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-colors"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Refresh
-        </button>
+        <div className="flex items-center gap-3">
+          {lastUpdated && (
+            <span className="text-xs text-zinc-400">
+              Updated {lastUpdated.toLocaleTimeString()}
+            </span>
+          )}
+          <button
+            onClick={fetchStats}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-600 hover:text-zinc-800 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Stat Cards */}
