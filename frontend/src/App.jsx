@@ -6,6 +6,7 @@ import Workflows from './pages/Workflows';
 import WorkflowBuilder from './pages/WorkflowBuilder';
 import Executions from './pages/Executions';
 import Settings from './pages/Settings';
+import AIChat from './pages/AIChat';
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         <Route path="/leads" element={<Leads />} />
         <Route path="/workflows" element={<Workflows />} />
         <Route path="/executions" element={<Executions />} />
+        <Route path="/ai" element={<AIChat />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
       <Route path="/workflows/:id" element={<WorkflowBuilder />} />

@@ -17,13 +17,15 @@ import {
   fetchWorkflowById,
   createWorkflow,
   updateWorkflow as updateWorkflowInDB,
+  fetchLeads,
+  runWorkflowExecution,
 } from '../lib/supabaseService';
 import {
   Save, ArrowLeft, Play, Sparkles, Mail, Clock,
   GitBranch, UserCheck, Square, GripVertical, Trash2,
   Globe, Webhook, Bot, Code, Filter, Merge, Split,
   CalendarClock, FileText, Tags, MessageSquare, Smartphone,
-  ChevronDown, ChevronRight, Search
+  ChevronDown, ChevronRight, Search, Zap, X, Check, Users, Loader2
 } from 'lucide-react';
 
 import StartNode from '../components/nodes/StartNode';
@@ -157,6 +159,12 @@ export default function WorkflowBuilder() {
   const [workflowDesc, setWorkflowDesc] = useState('');
   const [saving, setSaving] = useState(false);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
+  const [showExecuteModal, setShowExecuteModal] = useState(false);
+  const [executeLeads, setExecuteLeads] = useState([]);
+  const [selectedLeadIds, setSelectedLeadIds] = useState([]);
+  const [executing, setExecuting] = useState(false);
+  const [leadSearch, setLeadSearch] = useState('');
+  const [loadingLeads, setLoadingLeads] = useState(false);
 
   // Load workflow if editing
   useEffect(() => {
@@ -233,6 +241,57 @@ export default function WorkflowBuilder() {
     setSelectedNode(null);
   }, [selectedNode, setNodes, setEdges]);
 
+  const openExecuteModal = async () => {
+    setShowExecuteModal(true);
+    setLoadingLeads(true);
+    try {
+      const result = await fetchLeads({ limit: 200 });
+      setExecuteLeads(result.leads || []);
+    } catch {
+      toast.error('Failed to load leads');
+    } finally {
+      setLoadingLeads(false);
+    }
+  };
+
+  const toggleLeadSelection = (leadId) => {
+    setSelectedLeadIds(prev =>
+      prev.includes(leadId) ? prev.filter(id => id !== leadId) : [...prev, leadId]
+    );
+  };
+
+  const selectAllLeads = () => {
+    const filteredLeadsList = executeLeads.filter(l =>
+      l.name?.toLowerCase().includes(leadSearch.toLowerCase()) ||
+      l.email?.toLowerCase().includes(leadSearch.toLowerCase()) ||
+      l.company?.toLowerCase().includes(leadSearch.toLowerCase())
+    );
+    setSelectedLeadIds(filteredLeadsList.map(l => l.id));
+  };
+
+  const handleExecute = async () => {
+    if (selectedLeadIds.length === 0) {
+      toast.error('Select at least one lead');
+      return;
+    }
+    if (!id || id === 'new') {
+      toast.error('Save the workflow first before executing');
+      return;
+    }
+
+    setExecuting(true);
+    try {
+      const result = await runWorkflowExecution({ workflowId: id, leadIds: selectedLeadIds });
+      toast.success(`Started ${result.executionIds.length} execution(s)!`);
+      setShowExecuteModal(false);
+      setSelectedLeadIds([]);
+    } catch (err) {
+      toast.error(err.message || 'Failed to execute');
+    } finally {
+      setExecuting(false);
+    }
+  };
+
   const saveWorkflow = async () => {
     if (!workflowName.trim()) {
       toast.error('Workflow name is required');
@@ -299,6 +358,14 @@ export default function WorkflowBuilder() {
           >
             <Trash2 className="w-3.5 h-3.5" />
             Delete
+          </button>
+          <button
+            onClick={openExecuteModal}
+            disabled={!id || id === 'new' || nodes.length === 0}
+            className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          >
+            <Zap className="w-3.5 h-3.5" />
+            Execute
           </button>
           <button
             onClick={saveWorkflow}
@@ -380,6 +447,135 @@ export default function WorkflowBuilder() {
           />
         )}
       </div>
+
+      {/* Execute Workflow Modal */}
+      {showExecuteModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center">
+                  <Zap className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-zinc-900">Execute Workflow</h3>
+                  <p className="text-xs text-zinc-500">Select leads to run &quot;{workflowName}&quot; on</p>
+                </div>
+              </div>
+              <button onClick={() => { setShowExecuteModal(false); setSelectedLeadIds([]); }} className="p-2 hover:bg-zinc-100 rounded-lg">
+                <X className="w-5 h-5 text-zinc-500" />
+              </button>
+            </div>
+
+            <div className="px-6 py-3 border-b border-zinc-100">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                  <input
+                    type="text"
+                    value={leadSearch}
+                    onChange={(e) => setLeadSearch(e.target.value)}
+                    placeholder="Search leads..."
+                    className="w-full pl-9 pr-3 py-2 text-sm border border-zinc-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  />
+                </div>
+                <button onClick={selectAllLeads} className="px-3 py-2 text-xs font-medium text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
+                  Select All
+                </button>
+                <button onClick={() => setSelectedLeadIds([])} className="px-3 py-2 text-xs font-medium text-zinc-500 hover:bg-zinc-100 rounded-lg transition-colors">
+                  Clear
+                </button>
+              </div>
+              {selectedLeadIds.length > 0 && (
+                <p className="text-xs text-emerald-600 mt-2 font-medium">
+                  {selectedLeadIds.length} lead{selectedLeadIds.length > 1 ? 's' : ''} selected
+                </p>
+              )}
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-6 py-3 space-y-1.5">
+              {loadingLeads ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-6 h-6 text-emerald-500 animate-spin" />
+                </div>
+              ) : executeLeads.filter(l =>
+                l.name?.toLowerCase().includes(leadSearch.toLowerCase()) ||
+                l.email?.toLowerCase().includes(leadSearch.toLowerCase()) ||
+                l.company?.toLowerCase().includes(leadSearch.toLowerCase())
+              ).length === 0 ? (
+                <div className="text-center py-12">
+                  <Users className="w-10 h-10 text-zinc-300 mx-auto mb-2" />
+                  <p className="text-sm text-zinc-500">No leads found</p>
+                  <p className="text-xs text-zinc-400 mt-1">Import leads first from the Leads page</p>
+                </div>
+              ) : (
+                executeLeads
+                  .filter(l =>
+                    l.name?.toLowerCase().includes(leadSearch.toLowerCase()) ||
+                    l.email?.toLowerCase().includes(leadSearch.toLowerCase()) ||
+                    l.company?.toLowerCase().includes(leadSearch.toLowerCase())
+                  )
+                  .map(lead => (
+                    <button
+                      key={lead.id}
+                      onClick={() => toggleLeadSelection(lead.id)}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
+                        selectedLeadIds.includes(lead.id)
+                          ? 'border-emerald-300 bg-emerald-50/50 ring-1 ring-emerald-200'
+                          : 'border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                        selectedLeadIds.includes(lead.id)
+                          ? 'bg-emerald-500 border-emerald-500'
+                          : 'border-zinc-300'
+                      }`}>
+                        {selectedLeadIds.includes(lead.id) && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-zinc-800 truncate">{lead.name}</p>
+                        <p className="text-xs text-zinc-400 truncate">{lead.email} {lead.company ? `· ${lead.company}` : ''}</p>
+                      </div>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                        lead.status === 'new' ? 'bg-blue-50 text-blue-600'
+                        : lead.status === 'contacted' ? 'bg-amber-50 text-amber-600'
+                        : lead.status === 'converted' ? 'bg-emerald-50 text-emerald-600'
+                        : 'bg-zinc-100 text-zinc-500'
+                      }`}>
+                        {lead.status}
+                      </span>
+                    </button>
+                  ))
+              )}
+            </div>
+
+            <div className="px-6 py-4 border-t border-zinc-200 flex items-center justify-between">
+              <p className="text-xs text-zinc-400">
+                {nodes.length} nodes · {edges.length} connections
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setShowExecuteModal(false); setSelectedLeadIds([]); }}
+                  className="px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleExecute}
+                  disabled={executing || selectedLeadIds.length === 0}
+                  className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg hover:from-emerald-600 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                >
+                  {executing ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Running...</>
+                  ) : (
+                    <><Zap className="w-4 h-4" /> Execute on {selectedLeadIds.length} Lead{selectedLeadIds.length > 1 ? 's' : ''}</>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

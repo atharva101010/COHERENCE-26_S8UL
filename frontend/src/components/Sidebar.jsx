@@ -5,7 +5,8 @@ import {
   GitBranch,
   Play,
   Settings,
-  Zap
+  Zap,
+  Sparkles
 } from 'lucide-react';
 
 const navItems = [
@@ -13,6 +14,7 @@ const navItems = [
   { to: '/leads', label: 'Leads', icon: Users },
   { to: '/workflows', label: 'Workflows', icon: GitBranch },
   { to: '/executions', label: 'Executions', icon: Play },
+  { to: '/ai', label: 'AI Assistant', icon: Sparkles },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
 

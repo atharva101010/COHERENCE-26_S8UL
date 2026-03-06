@@ -604,3 +604,62 @@ export async function previewAIMessages({ prompt, tone, maxLength, credentialId,
   }
   return res.json();
 }
+
+// ──────────────────────────────────────────────
+// EXECUTION ENGINE
+// ──────────────────────────────────────────────
+
+export async function runWorkflowExecution({ workflowId, leadIds }) {
+  const res = await fetch(`${API_BASE}/api/executions/run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ workflowId, leadIds }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Failed to start execution');
+  }
+  return res.json();
+}
+
+export async function fetchExecutionsFromAPI({ status, limit = 50 } = {}) {
+  const params = new URLSearchParams();
+  if (status && status !== 'all') params.set('status', status);
+  if (limit) params.set('limit', String(limit));
+  const res = await fetch(`${API_BASE}/api/executions?${params.toString()}`);
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Failed to fetch executions');
+  }
+  return res.json();
+}
+
+// ──────────────────────────────────────────────
+// AI CHAT (direct AI access)
+// ──────────────────────────────────────────────
+
+export async function chatWithAI({ message, context, model }) {
+  const res = await fetch(`${API_BASE}/api/ai/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, context, model }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'AI chat failed');
+  }
+  return res.json();
+}
+
+export async function createWorkflowWithAI({ description }) {
+  const res = await fetch(`${API_BASE}/api/ai/create-workflow`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ description }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'AI workflow creation failed');
+  }
+  return res.json();
+}
