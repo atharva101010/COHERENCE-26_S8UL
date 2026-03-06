@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import {
   X, Play, Sparkles, Mail, Clock, GitBranch, UserCheck, Square,
   Globe, Webhook, Bot, Code, Filter, Merge, Split, CalendarClock,
-  FileText, Tags, MessageSquare, Smartphone, Key, Eye
+  FileText, Tags, MessageSquare, Smartphone, Key, Eye, Hash, Send
 } from 'lucide-react';
 import { fetchCredentials } from '../lib/supabaseService';
 import AIPreviewModal from './AIPreviewModal';
@@ -28,6 +28,9 @@ const nodeIcons = {
   classifierNode: { icon: Tags, bgClass: 'bg-yellow-500', headerBg: 'from-yellow-50 to-amber-100', label: 'Classifier' },
   slackNode: { icon: MessageSquare, bgClass: 'bg-green-600', headerBg: 'from-green-50 to-emerald-100', label: 'Slack' },
   smsNode: { icon: Smartphone, bgClass: 'bg-violet-600', headerBg: 'from-violet-50 to-purple-100', label: 'SMS' },
+  whatsappNode: { icon: MessageSquare, bgClass: 'bg-emerald-500', headerBg: 'from-emerald-50 to-green-100', label: 'WhatsApp' },
+  telegramNode: { icon: Send, bgClass: 'bg-sky-500', headerBg: 'from-sky-50 to-blue-100', label: 'Telegram' },
+  discordNode: { icon: Hash, bgClass: 'bg-indigo-500', headerBg: 'from-indigo-50 to-violet-100', label: 'Discord' },
 };
 
 const aiProviders = {
@@ -677,6 +680,54 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
               <label htmlFor="sms-message" className={labelClass}>Message</label>
               <textarea id="sms-message" value={node.data.smsMessage || ''} onChange={(e) => updateData('smsMessage', e.target.value)} rows={3}
                 placeholder="Hi {{name}}, follow up on our conversation..." className={inputClass + ' resize-none'} />
+            </div>
+          </>
+        )}
+
+        {/* ===== WHATSAPP NODE ===== */}
+        {node.type === 'whatsappNode' && (
+          <>
+            <div>
+              <label htmlFor="wa-phone" className={labelClass}>Phone Number</label>
+              <input id="wa-phone" type="text" value={node.data.phoneNumber || ''} onChange={(e) => updateData('phoneNumber', e.target.value)} placeholder="+1234567890 or {{phone}}" className={inputClass} />
+            </div>
+            <div>
+              <label htmlFor="wa-message" className={labelClass}>Message</label>
+              <textarea id="wa-message" value={node.data.waMessage || ''} onChange={(e) => updateData('waMessage', e.target.value)} rows={3}
+                placeholder="Hi {{name}}, reaching out about {{company}}..." className={inputClass + ' resize-none'} />
+              <p className="mt-1 text-xs text-zinc-400">Variables: {'{{name}}'}, {'{{email}}'}, {'{{company}}'}, {'{{title}}'}</p>
+            </div>
+          </>
+        )}
+
+        {/* ===== TELEGRAM NODE ===== */}
+        {node.type === 'telegramNode' && (
+          <>
+            <div>
+              <label htmlFor="tg-chatId" className={labelClass}>Chat ID</label>
+              <input id="tg-chatId" type="text" value={node.data.chatId || ''} onChange={(e) => updateData('chatId', e.target.value)} placeholder="e.g. 123456789" className={inputClass} />
+            </div>
+            <div>
+              <label htmlFor="tg-message" className={labelClass}>Message</label>
+              <textarea id="tg-message" value={node.data.tgMessage || ''} onChange={(e) => updateData('tgMessage', e.target.value)} rows={3}
+                placeholder="Lead update: {{name}} from {{company}}" className={inputClass + ' resize-none'} />
+              <p className="mt-1 text-xs text-zinc-400">Variables: {'{{name}}'}, {'{{email}}'}, {'{{company}}'}, {'{{title}}'}</p>
+            </div>
+          </>
+        )}
+
+        {/* ===== DISCORD NODE ===== */}
+        {node.type === 'discordNode' && (
+          <>
+            <div>
+              <label htmlFor="dc-webhook" className={labelClass}>Webhook URL</label>
+              <input id="dc-webhook" type="text" value={node.data.webhookUrl || ''} onChange={(e) => updateData('webhookUrl', e.target.value)} placeholder="https://discord.com/api/webhooks/..." className={inputClass} />
+            </div>
+            <div>
+              <label htmlFor="dc-message" className={labelClass}>Message</label>
+              <textarea id="dc-message" value={node.data.dcMessage || ''} onChange={(e) => updateData('dcMessage', e.target.value)} rows={3}
+                placeholder="New lead: {{name}} ({{email}})" className={inputClass + ' resize-none'} />
+              <p className="mt-1 text-xs text-zinc-400">Variables: {'{{name}}'}, {'{{email}}'}, {'{{company}}'}, {'{{title}}'}</p>
             </div>
           </>
         )}

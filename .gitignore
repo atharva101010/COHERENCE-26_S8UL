@@ -36,3 +36,11 @@ Thumbs.db
 # temporary
 *.tmp
 *.temp
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal
+
+# frontend build
+frontend/dist/

@@ -28,7 +28,7 @@ export default function Header() {
   useEffect(() => {
     const check = async () => {
       try {
-        const r = await fetch('http://localhost:3001/health', { signal: AbortSignal.timeout(3000) });
+        const r = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/health`, { signal: AbortSignal.timeout(3000) });
         setOnline(r.ok);
       } catch { setOnline(false); }
     };

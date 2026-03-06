@@ -1,17 +1,21 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Home, MessageSquare, BarChart2, Workflow, Users, Settings, Bell, CircleUser, ChevronRight } from 'lucide-react';
+import { Home, MessageSquare, Workflow, Users, Settings, Bell, CircleUser, Radio, Zap, Sparkles } from 'lucide-react';
 
 const navItems = [
   { section: 'Overview', items: [
     { name: 'Dashboard', icon: Home, path: '/dashboard', badge: null },
-    { name: 'Reports', icon: BarChart2, path: '/reports', badge: null },
+    { name: 'Executions', icon: Zap, path: '/executions', badge: null },
+  ]},
+  { section: 'AI', items: [
+    { name: 'AI Assistant', icon: Sparkles, path: '/ai', badge: 'NEW' },
   ]},
   { section: 'Tools', items: [
-    { name: 'Messages', icon: MessageSquare, path: '/messages', badge: '12' },
+    { name: 'Messages', icon: MessageSquare, path: '/messages', badge: null },
     { name: 'Workflows', icon: Workflow, path: '/workflows', badge: null },
     { name: 'Leads', icon: Users, path: '/leads', badge: null },
+    { name: 'Channels', icon: Radio, path: '/channels', badge: null },
   ]},
   { section: 'Metrics', items: [
     { name: 'Settings', icon: Settings, path: '/settings', badge: null },
@@ -38,8 +42,8 @@ export default function Sidebar() {
 
       {/* Main Nav */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
-        {navItems.map((section, idx) => (
-          <div key={idx}>
+        {navItems.map((section) => (
+          <div key={section.section}>
             <h4 className="px-3 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider mb-2">{section.section}</h4>
             <nav className="space-y-1">
               {section.items.map((item) => {

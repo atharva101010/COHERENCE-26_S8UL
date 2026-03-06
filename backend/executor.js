@@ -163,6 +163,15 @@ export class WorkflowExecutor {
         case 'smsNode':
           await this.handleSms(node);
           break;
+        case 'whatsappNode':
+          await this.handleWhatsApp(node);
+          break;
+        case 'telegramNode':
+          await this.handleTelegram(node);
+          break;
+        case 'discordNode':
+          await this.handleDiscord(node);
+          break;
         case 'webhookNode':
           this.log('info', `Webhook node "${label}" — skipped in manual execution`);
           break;
@@ -525,7 +534,44 @@ export class WorkflowExecutor {
   }
 
   async handleCode(node) {
-    this.log('info', `Code node — execution skipped for security (language: ${node.data?.language || 'javascript'})`);
+    const { code, language } = node.data || {};
+    this.log('info', `Code node — running (language: ${language || 'javascript'})`);
+
+    if (!code?.trim()) {
+      this.log('warn', 'Code node — no code provided, skipping');
+      return;
+    }
+
+    if (language && language !== 'javascript') {
+      this.log('warn', `Code node — only JavaScript is supported, got "${language}". Skipping.`);
+      return;
+    }
+
+    try {
+      const { createContext, Script } = await import('node:vm');
+      const sandbox = {
+        lead: { ...this.context.lead },
+        context: { ...this.context },
+        result: null,
+        console: {
+          log: (...args) => this.log('info', `[code] ${args.join(' ')}`),
+          warn: (...args) => this.log('warn', `[code] ${args.join(' ')}`),
+          error: (...args) => this.log('error', `[code] ${args.join(' ')}`),
+        },
+      };
+      createContext(sandbox);
+      const script = new Script(code, { timeout: 5000 });
+      script.runInContext(sandbox, { timeout: 5000 });
+
+      if (sandbox.result !== null && sandbox.result !== undefined) {
+        this.context.codeResult = sandbox.result;
+        this.log('info', `Code result: ${JSON.stringify(sandbox.result).substring(0, 200)}`);
+      } else {
+        this.log('info', 'Code executed successfully (no result returned)');
+      }
+    } catch (err) {
+      this.log('error', `Code execution failed: ${err.message}`);
+    }
   }
 
   async handleSummarizer(node) {
@@ -563,16 +609,219 @@ export class WorkflowExecutor {
   async handleSlack(node) {
     const { channel, message } = node.data || {};
     const filledMessage = replaceVariables(message || 'New lead activity: {{name}} from {{company}}', this.context.lead);
-    this.log('info', `Slack: Would send to #${channel || 'general'}: "${filledMessage.substring(0, 100)}..."`);
-    // In production, integrate with Slack API
+
+    this.log('info', `Slack: Sending to #${channel || 'general'}: "${filledMessage.substring(0, 100)}..."`);
+
+    const webhookUrl = process.env.SLACK_WEBHOOK_URL;
+
+    if (webhookUrl) {
+      try {
+        const resp = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: filledMessage, channel: channel ? `#${channel}` : undefined }),
+        });
+        if (resp.ok) {
+          this.log('info', 'Slack message sent successfully');
+        } else {
+          const result = await resp.text();
+          this.log('warn', `Slack API error: ${result.substring(0, 200)}`);
+        }
+      } catch (err) {
+        this.log('error', `Slack send failed: ${err.message}`);
+      }
+    } else {
+      this.log('warn', 'Slack not configured — message logged only');
+    }
+
+    await supabase.from('messages').insert({
+      lead_id: this.lead.id,
+      execution_id: this.executionId,
+      type: 'slack',
+      channel: 'slack',
+      subject: null,
+      body: filledMessage,
+      status: webhookUrl ? 'sent' : 'draft',
+    });
   }
 
   async handleSms(node) {
     const { to, smsMessage } = node.data || {};
     const filledMsg = replaceVariables(smsMessage || 'Hi {{name}}, check your email!', this.context.lead);
-    const recipient = replaceVariables(to || '', this.context.lead) || this.lead.phone || 'N/A';
-    this.log('info', `SMS: Would send to ${recipient}: "${filledMsg.substring(0, 100)}..."`);
-    // In production, integrate with Twilio or similar
+    const recipient = replaceVariables(to || '', this.context.lead) || this.context.lead?.phone || 'N/A';
+
+    this.log('info', `SMS: Sending to ${recipient}: "${filledMsg.substring(0, 100)}..."`);
+
+    const twilioSid = process.env.TWILIO_ACCOUNT_SID;
+    const twilioAuth = process.env.TWILIO_AUTH_TOKEN;
+    const twilioFrom = process.env.TWILIO_PHONE_NUMBER;
+
+    if (twilioSid && twilioAuth && twilioFrom && recipient !== 'N/A') {
+      try {
+        const resp = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Basic ' + Buffer.from(`${twilioSid}:${twilioAuth}`).toString('base64'),
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({ To: recipient, From: twilioFrom, Body: filledMsg }).toString(),
+        });
+        const result = await resp.json();
+        if (resp.ok || resp.status === 201) {
+          this.log('info', `SMS sent successfully (sid: ${result.sid || 'N/A'})`);
+        } else {
+          this.log('warn', `Twilio API error: ${result.message || JSON.stringify(result)}`);
+        }
+      } catch (err) {
+        this.log('error', `SMS send failed: ${err.message}`);
+      }
+    } else {
+      this.log('warn', 'SMS (Twilio) not configured — message logged only');
+    }
+
+    await supabase.from('messages').insert({
+      lead_id: this.lead.id,
+      execution_id: this.executionId,
+      type: 'sms',
+      channel: 'sms',
+      subject: null,
+      body: filledMsg,
+      status: twilioSid ? 'sent' : 'draft',
+    });
+  }
+
+  async handleWhatsApp(node) {
+    const { phoneNumber, waMessage } = node.data || {};
+    const filledMsg = replaceVariables(waMessage || 'Hi {{name}}, this is a message from FlowReach AI.', this.context.lead);
+    const recipient = replaceVariables(phoneNumber || '', this.context.lead) || this.lead.phone || 'N/A';
+
+    this.log('info', `WhatsApp: Sending to ${recipient}: "${filledMsg.substring(0, 100)}..."`);
+
+    // Try WhatsApp Cloud API if configured
+    const token = process.env.WHATSAPP_ACCESS_TOKEN;
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+    if (token && phoneNumberId) {
+      try {
+        const resp = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            to: recipient.replaceAll(/\D/g, ''),
+            type: 'text',
+            text: { body: filledMsg },
+          }),
+        });
+        const result = await resp.json();
+        if (resp.ok) {
+          this.log('info', `WhatsApp sent successfully (id: ${result.messages?.[0]?.id || 'N/A'})`);
+        } else {
+          this.log('warn', `WhatsApp API error: ${JSON.stringify(result.error || result)}`);
+        }
+      } catch (err) {
+        this.log('error', `WhatsApp send failed: ${err.message}`);
+      }
+    } else {
+      this.log('warn', 'WhatsApp not configured — message logged only');
+    }
+
+    // Store message
+    await supabase.from('messages').insert({
+      lead_id: this.lead.id,
+      execution_id: this.executionId,
+      type: 'whatsapp',
+      channel: 'whatsapp',
+      subject: null,
+      body: filledMsg,
+      status: token ? 'sent' : 'draft',
+    });
+  }
+
+  async handleTelegram(node) {
+    const { chatId, tgMessage } = node.data || {};
+    const filledMsg = replaceVariables(tgMessage || 'Hi {{name}}, message from FlowReach AI.', this.context.lead);
+    const targetChat = replaceVariables(chatId || '', this.context.lead) || 'N/A';
+
+    this.log('info', `Telegram: Sending to chat ${targetChat}: "${filledMsg.substring(0, 100)}..."`);
+
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+
+    if (botToken && targetChat !== 'N/A') {
+      try {
+        const resp = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: targetChat,
+            text: filledMsg,
+            parse_mode: 'HTML',
+          }),
+        });
+        const result = await resp.json();
+        if (result.ok) {
+          this.log('info', `Telegram sent successfully (message_id: ${result.result?.message_id || 'N/A'})`);
+        } else {
+          this.log('warn', `Telegram API error: ${result.description || JSON.stringify(result)}`);
+        }
+      } catch (err) {
+        this.log('error', `Telegram send failed: ${err.message}`);
+      }
+    } else {
+      this.log('warn', 'Telegram not configured — message logged only');
+    }
+
+    await supabase.from('messages').insert({
+      lead_id: this.lead.id,
+      execution_id: this.executionId,
+      type: 'telegram',
+      channel: 'telegram',
+      subject: null,
+      body: filledMsg,
+      status: botToken ? 'sent' : 'draft',
+    });
+  }
+
+  async handleDiscord(node) {
+    const { webhookUrl, dcMessage } = node.data || {};
+    const filledMsg = replaceVariables(dcMessage || 'Hi {{name}}, message from FlowReach AI.', this.context.lead);
+
+    this.log('info', `Discord: Sending message: "${filledMsg.substring(0, 100)}..."`);
+
+    const targetUrl = webhookUrl || process.env.DISCORD_WEBHOOK_URL;
+
+    if (targetUrl) {
+      try {
+        const resp = await fetch(targetUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: filledMsg }),
+        });
+        if (resp.ok || resp.status === 204) {
+          this.log('info', 'Discord message sent successfully');
+        } else {
+          const result = await resp.text();
+          this.log('warn', `Discord API error: ${result.substring(0, 200)}`);
+        }
+      } catch (err) {
+        this.log('error', `Discord send failed: ${err.message}`);
+      }
+    } else {
+      this.log('warn', 'Discord not configured — message logged only');
+    }
+
+    await supabase.from('messages').insert({
+      lead_id: this.lead.id,
+      execution_id: this.executionId,
+      type: 'discord',
+      channel: 'discord',
+      subject: null,
+      body: filledMsg,
+      status: targetUrl ? 'sent' : 'draft',
+    });
   }
 }
 

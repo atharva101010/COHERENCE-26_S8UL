@@ -41,7 +41,7 @@ export default function AppLayout() {
     <div className="flex h-screen overflow-hidden bg-neutral-100">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto w-full">
-        <main className="flex-1 h-full">
+        <main className="flex-1 h-full p-6">
           <Outlet />
         </main>
         {/* Keyboard shortcut hint */}
@@ -56,20 +56,16 @@ export default function AppLayout() {
 
       {/* Help Modal */}
       {showHelp && (
-        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
-        <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50"
-          onClick={() => setShowHelp(false)}
-          onKeyDown={(e) => { if (e.key === 'Escape') setShowHelp(false); }}
-          tabIndex={-1}
-          role="button"
-          aria-label="Close keyboard shortcuts"
-        >
-          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
+        <div className="fixed inset-0 z-50">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm border-none"
+            onClick={() => setShowHelp(false)}
+            aria-label="Close keyboard shortcuts"
+          />
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4"
-            onClick={e => e.stopPropagation()}
-            onKeyDown={e => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 pointer-events-auto"
           >
             <div className="flex items-center justify-between p-5 border-b border-zinc-100">
               <div className="flex items-center gap-2">
@@ -92,6 +88,7 @@ export default function AppLayout() {
                 <kbd className="px-2.5 py-1 text-xs font-mono font-semibold bg-zinc-100 border border-zinc-200 rounded-lg text-zinc-700">Esc</kbd>
               </div>
             </div>
+          </div>
           </div>
         </div>
       )}

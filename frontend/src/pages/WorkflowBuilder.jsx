@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import {
   ReactFlow,
   addEdge,
@@ -47,6 +48,9 @@ import SummarizerNode from '../components/nodes/SummarizerNode';
 import ClassifierNode from '../components/nodes/ClassifierNode';
 import SlackNode from '../components/nodes/SlackNode';
 import SmsNode from '../components/nodes/SmsNode';
+import WhatsAppNode from '../components/nodes/WhatsAppNode';
+import TelegramNode from '../components/nodes/TelegramNode';
+import DiscordNode from '../components/nodes/DiscordNode';
 import NodeConfigPanel from '../components/NodeConfigPanel';
 
 const nodeTypes = {
@@ -69,6 +73,9 @@ const nodeTypes = {
   classifierNode: ClassifierNode,
   slackNode: SlackNode,
   smsNode: SmsNode,
+  whatsappNode: WhatsAppNode,
+  telegramNode: TelegramNode,
+  discordNode: DiscordNode,
 };
 
 const paletteCategories = [
@@ -95,6 +102,9 @@ const paletteCategories = [
       { type: 'emailNode', label: 'Email', icon: Mail, bgClass: 'bg-blue-500', hoverBorder: 'hover:border-blue-300', hoverBg: 'hover:bg-blue-50/50', description: 'Send email' },
       { type: 'slackNode', label: 'Slack', icon: MessageSquare, bgClass: 'bg-green-600', hoverBorder: 'hover:border-green-300', hoverBg: 'hover:bg-green-50/50', description: 'Slack message' },
       { type: 'smsNode', label: 'SMS', icon: Smartphone, bgClass: 'bg-violet-600', hoverBorder: 'hover:border-violet-300', hoverBg: 'hover:bg-violet-50/50', description: 'Send SMS' },
+      { type: 'whatsappNode', label: 'WhatsApp', icon: MessageSquare, bgClass: 'bg-emerald-500', hoverBorder: 'hover:border-emerald-300', hoverBg: 'hover:bg-emerald-50/50', description: 'WhatsApp message' },
+      { type: 'telegramNode', label: 'Telegram', icon: MessageSquare, bgClass: 'bg-sky-500', hoverBorder: 'hover:border-sky-300', hoverBg: 'hover:bg-sky-50/50', description: 'Telegram message' },
+      { type: 'discordNode', label: 'Discord', icon: MessageSquare, bgClass: 'bg-indigo-500', hoverBorder: 'hover:border-indigo-300', hoverBg: 'hover:bg-indigo-50/50', description: 'Discord webhook' },
     ],
   },
   {
@@ -143,6 +153,9 @@ const defaultNodeData = {
   classifierNode: { label: 'Classifier', categories: ['hot_lead', 'warm_lead', 'cold_lead'], classifyPrompt: '' },
   slackNode: { label: 'Slack', channel: 'general', message: '' },
   smsNode: { label: 'SMS', to: '', smsMessage: '' },
+  whatsappNode: { label: 'WhatsApp', phoneNumber: '', waMessage: '' },
+  telegramNode: { label: 'Telegram', chatId: '', tgMessage: '' },
+  discordNode: { label: 'Discord', webhookUrl: '', dcMessage: '' },
 };
 
 let nodeId = 0;
@@ -315,7 +328,7 @@ export default function WorkflowBuilder() {
         toast.success('Workflow created!');
         navigate(`/workflows/${created.id}`, { replace: true });
       }
-    } catch (err) {
+    } catch {
       toast.error('Failed to save workflow');
     } finally {
       setSaving(false);
@@ -494,21 +507,23 @@ export default function WorkflowBuilder() {
             </div>
 
             <div className="flex-1 overflow-y-auto px-6 py-3 space-y-1.5">
-              {loadingLeads ? (
+              {loadingLeads && (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-6 h-6 text-emerald-500 animate-spin" />
                 </div>
-              ) : executeLeads.filter(l =>
+              )}
+              {!loadingLeads && executeLeads.filter(l =>
                 l.name?.toLowerCase().includes(leadSearch.toLowerCase()) ||
                 l.email?.toLowerCase().includes(leadSearch.toLowerCase()) ||
                 l.company?.toLowerCase().includes(leadSearch.toLowerCase())
-              ).length === 0 ? (
+              ).length === 0 && (
                 <div className="text-center py-12">
                   <Users className="w-10 h-10 text-zinc-300 mx-auto mb-2" />
                   <p className="text-sm text-zinc-500">No leads found</p>
                   <p className="text-xs text-zinc-400 mt-1">Import leads first from the Leads page</p>
                 </div>
-              ) : (
+              )}
+              {!loadingLeads &&
                 executeLeads
                   .filter(l =>
                     l.name?.toLowerCase().includes(leadSearch.toLowerCase()) ||
@@ -536,17 +551,11 @@ export default function WorkflowBuilder() {
                         <p className="text-sm font-medium text-zinc-800 truncate">{lead.name}</p>
                         <p className="text-xs text-zinc-400 truncate">{lead.email} {lead.company ? `· ${lead.company}` : ''}</p>
                       </div>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                        lead.status === 'new' ? 'bg-blue-50 text-blue-600'
-                        : lead.status === 'contacted' ? 'bg-amber-50 text-amber-600'
-                        : lead.status === 'converted' ? 'bg-emerald-50 text-emerald-600'
-                        : 'bg-zinc-100 text-zinc-500'
-                      }`}>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getLeadStatusClass(lead.status)}`}>
                         {lead.status}
                       </span>
                     </button>
-                  ))
-              )}
+                  ))}
             </div>
 
             <div className="px-6 py-4 border-t border-zinc-200 flex items-center justify-between">
@@ -578,6 +587,13 @@ export default function WorkflowBuilder() {
       )}
     </div>
   );
+}
+
+function getLeadStatusClass(status) {
+  if (status === 'new') return 'bg-blue-50 text-blue-600';
+  if (status === 'contacted') return 'bg-amber-50 text-amber-600';
+  if (status === 'converted') return 'bg-emerald-50 text-emerald-600';
+  return 'bg-zinc-100 text-zinc-500';
 }
 
 function NodePalette({ onDragStart }) {
@@ -626,11 +642,11 @@ function NodePalette({ onDragStart }) {
               <span className="text-zinc-300 font-normal ml-auto">{cat.items.length}</span>
             </button>
             {!collapsed[cat.name] && (
-              <div className="space-y-1 mb-2">
+              <ul className="space-y-1 mb-2 list-none p-0 m-0">
                 {cat.items.map((item) => {
                   const Icon = item.icon;
                   return (
-                    <div
+                    <li
                       key={item.type}
                       draggable
                       onDragStart={(e) => onDragStart(e, item.type)}
@@ -644,10 +660,10 @@ function NodePalette({ onDragStart }) {
                         <div className="text-[10px] text-zinc-400 truncate">{item.description}</div>
                       </div>
                       <GripVertical className="w-3 h-3 text-zinc-300 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
+                    </li>
                   );
                 })}
-              </div>
+              </ul>
             )}
           </div>
         ))}
@@ -655,3 +671,7 @@ function NodePalette({ onDragStart }) {
     </div>
   );
 }
+
+NodePalette.propTypes = {
+  onDragStart: PropTypes.func.isRequired,
+};

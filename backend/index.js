@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import { createServer } from 'node:http';
 import { Server } from 'socket.io';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import dotenv from 'dotenv';
 import leadsRouter from './routes/leads.js';
 import statsRouter from './routes/stats.js';
@@ -10,20 +12,26 @@ import credentialsRouter from './routes/credentials.js';
 import aiRouter from './routes/ai.js';
 import executionsRouter from './routes/executions.js';
 import settingsRouter from './routes/settings.js';
+import messagesRouter from './routes/messages.js';
+import channelsRouter from './routes/channels.js';
 
 dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
+const allowedOrigins = process.env.FRONTEND_URL
+  ? [process.env.FRONTEND_URL, 'http://localhost:5173']
+  : ['http://localhost:5173'];
+
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'DELETE']
   }
 });
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173'
+  origin: allowedOrigins
 }));
 app.use(express.json({ limit: '10mb' }));
 
@@ -43,6 +51,8 @@ app.use('/api/credentials', credentialsRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/executions', executionsRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/messages', messagesRouter);
+app.use('/api/channels', channelsRouter);
 
 // POST /api/seed/reset — Reset demo data by re-running seed
 app.post('/api/seed/reset', async (req, res) => {
@@ -53,6 +63,15 @@ app.post('/api/seed/reset', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Failed to reset demo data: ' + err.message });
   }
+});
+
+// Serve frontend static files in production
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const frontendDist = path.join(__dirname, '..', 'frontend', 'dist');
+
+app.use(express.static(frontendDist));
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendDist, 'index.html'));
 });
 
 // Socket.io connection

@@ -1,17 +1,34 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { Activity, MessageSquare, Workflow, Calendar, Link as LinkIcon, Flag, LayoutGrid, Search, Maximize2, MoreVertical, PenLine, Filter, RefreshCw } from 'lucide-react';
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, ResponsiveContainer, YAxis, Tooltip, XAxis } from 'recharts';
-import { fetchStatsOverview, fetchLeads } from '../lib/supabaseService';
+import { Activity, MessageSquare, Workflow, Calendar, Link as LinkIcon, Flag, LayoutGrid, Search, Filter, RefreshCw, X, Plus, Copy, Check, Download } from 'lucide-react';
+import { LineChart, Line, AreaChart, Area, ResponsiveContainer, YAxis, Tooltip } from 'recharts';
+import { fetchStatsOverview, fetchLeads, bulkImportLeads } from '../lib/supabaseService';
+import toast from 'react-hot-toast';
+
+function getTimelineDotColor(status) {
+  if (status === 'converted') return 'bg-emerald-500';
+  if (status === 'contacted' || status === 'replied') return 'bg-primary';
+  return 'bg-muted-foreground/30';
+}
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState('board');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newLead, setNewLead] = useState({ name: '', email: '', company: '', title: '' });
+  const [creating, setCreating] = useState(false);
+  const [expandedCardId, setExpandedCardId] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -33,6 +50,54 @@ export default function Dashboard() {
     fetchData();
   }, [fetchData]);
 
+  // Search filtering
+  const filteredLeads = useMemo(() => {
+    let result = leads;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(l => l.name?.toLowerCase().includes(q) || l.email?.toLowerCase().includes(q) || l.company?.toLowerCase().includes(q));
+    }
+    if (statusFilter !== 'all') {
+      const statusMap = { backlog: ['new'], active: ['contacted', 'replied'], review: ['bounced', 'unsubscribed'], converted: ['converted'] };
+      result = result.filter(l => (statusMap[statusFilter] || []).includes(l.status));
+    }
+    return result;
+  }, [leads, searchQuery, statusFilter]);
+
+  const handleCreateLead = async () => {
+    if (!newLead.name || !newLead.email) { toast.error('Name and email are required'); return; }
+    setCreating(true);
+    try {
+      await bulkImportLeads([{ ...newLead, status: 'new' }]);
+      toast.success('Lead created successfully');
+      setShowCreateModal(false);
+      setNewLead({ name: '', email: '', company: '', title: '' });
+      fetchData();
+    } catch { toast.error('Failed to create lead'); }
+    finally { setCreating(false); }
+  };
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(globalThis.location.href);
+    setCopied(true);
+    toast.success('Link copied to clipboard');
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const exportSpreadsheet = () => {
+    const headers = ['ID', 'Name', 'Email', 'Company', 'Status', 'Title', 'Created'];
+    const rows = filteredLeads.map(l => [
+      `FR-${l.id}`, l.name, l.email, l.company || '', l.status, l.title || '',
+      l.created_at ? new Date(l.created_at).toLocaleDateString() : ''
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replaceAll('"', '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = Object.assign(document.createElement('a'), { href: url, download: `flowreach-leads-${new Date().toISOString().slice(0,10)}.csv` });
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    toast.success(`Exported ${filteredLeads.length} leads`);
+  };
+
   if (loading) {
     return <div className="p-8 animate-pulse text-muted-foreground flex items-center justify-center h-full">Loading your workspace...</div>;
   }
@@ -42,14 +107,46 @@ export default function Dashboard() {
   const statusCounts = stats?.leadsByStatus?.reduce((acc, curr) => ({ ...acc, [curr.status]: curr.count }), {}) || {};
   const executionsData = stats?.executionsByStatus || [];
 
+  // Pipeline growth: derive from messagesLast7Days + lead status counts
+  const pipelineData = (stats?.messagesLast7Days || []).map((m) => {
+    const day = new Date(m.date);
+    const label = day.toLocaleDateString('en-US', { weekday: 'short' });
+    return { name: label, active: (statusCounts.new || 0) + (statusCounts.contacted || 0) + m.count, converted: (statusCounts.converted || 0) + m.count };
+  });
+
   // Categorize leads for Kanban
-  const backlog = leads.filter(l => ['new'].includes(l.status));
-  const inProgress = leads.filter(l => ['contacted', 'replied'].includes(l.status));
-  const validation = leads.filter(l => ['bounced', 'unsubscribed'].includes(l.status));
-  const done = leads.filter(l => ['converted'].includes(l.status));
+  const backlog = filteredLeads.filter(l => ['new'].includes(l.status));
+  const inProgress = filteredLeads.filter(l => ['contacted', 'replied'].includes(l.status));
+  const validation = filteredLeads.filter(l => ['bounced', 'unsubscribed'].includes(l.status));
+  const done = filteredLeads.filter(l => ['converted'].includes(l.status));
 
   return (
     <div className="flex flex-col h-full bg-background min-h-screen">
+      {/* Create Lead Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50">
+          <button type="button" className="absolute inset-0 bg-black/50 border-none" onClick={() => setShowCreateModal(false)} aria-label="Close modal" />
+          <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+          <div className="bg-card rounded-xl border border-border shadow-xl w-full max-w-md p-6 pointer-events-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-foreground">Create New Lead</h3>
+              <button onClick={() => setShowCreateModal(false)} className="text-muted-foreground hover:text-foreground"><X size={18}/></button>
+            </div>
+            <div className="space-y-3">
+              <div><label htmlFor="new-lead-name" className="text-xs font-medium text-muted-foreground mb-1 block">Name *</label><input id="new-lead-name" value={newLead.name} onChange={e => setNewLead(p => ({...p, name: e.target.value}))} className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary" placeholder="John Doe" /></div>
+              <div><label htmlFor="new-lead-email" className="text-xs font-medium text-muted-foreground mb-1 block">Email *</label><input id="new-lead-email" value={newLead.email} onChange={e => setNewLead(p => ({...p, email: e.target.value}))} type="email" className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary" placeholder="john@example.com" /></div>
+              <div><label htmlFor="new-lead-company" className="text-xs font-medium text-muted-foreground mb-1 block">Company</label><input id="new-lead-company" value={newLead.company} onChange={e => setNewLead(p => ({...p, company: e.target.value}))} className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Acme Inc" /></div>
+              <div><label htmlFor="new-lead-title" className="text-xs font-medium text-muted-foreground mb-1 block">Title</label><input id="new-lead-title" value={newLead.title} onChange={e => setNewLead(p => ({...p, title: e.target.value}))} className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Marketing Manager" /></div>
+            </div>
+            <div className="flex justify-end gap-2 mt-5">
+              <Button variant="ghost" size="sm" onClick={() => setShowCreateModal(false)}>Cancel</Button>
+              <Button size="sm" disabled={creating} onClick={handleCreateLead} className="bg-primary text-primary-foreground">{creating ? 'Creating...' : 'Create Lead'}</Button>
+            </div>
+          </div>
+          </div>
+        </div>
+      )}
+
       {/* Top Header */}
       <div className="flex items-center justify-between px-8 py-5 border-b border-border bg-card">
         <div className="flex items-center gap-4 text-sm font-medium text-muted-foreground">
@@ -60,8 +157,8 @@ export default function Dashboard() {
         <div className="flex items-center gap-4">
            <div className="relative">
              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-             <input type="text" placeholder="Search" className="pl-8 pr-4 py-1.5 text-sm rounded-lg border border-border bg-muted/50 w-48 focus:outline-none focus:ring-1 focus:ring-primary text-foreground placeholder-muted-foreground" />
-             <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground font-medium px-1 border border-border rounded">⌘F</div>
+             <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search leads..." className="pl-8 pr-4 py-1.5 text-sm rounded-lg border border-border bg-muted/50 w-48 focus:outline-none focus:ring-1 focus:ring-primary text-foreground placeholder-muted-foreground" />
+             {searchQuery && <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X size={12}/></button>}
            </div>
            {lastUpdated && (
              <span className="text-xs text-muted-foreground">
@@ -71,8 +168,8 @@ export default function Dashboard() {
            <Button variant="ghost" size="sm" className="text-muted-foreground gap-2 font-medium hover:text-foreground" onClick={fetchData}>
              <RefreshCw size={14} /> Refresh
            </Button>
-           <Button variant="ghost" size="sm" className="hidden sm:flex text-muted-foreground gap-2 font-medium hover:text-foreground"><LinkIcon size={14}/> Share</Button>
-           <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm">Create lead</Button>
+           <Button variant="ghost" size="sm" className="hidden sm:flex text-muted-foreground gap-2 font-medium hover:text-foreground" onClick={handleShare}>{copied ? <Check size={14}/> : <Copy size={14}/>} {copied ? 'Copied!' : 'Share'}</Button>
+           <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm" onClick={() => setShowCreateModal(true)}><Plus size={14} className="mr-1"/> Create lead</Button>
         </div>
       </div>
 
@@ -91,11 +188,6 @@ export default function Dashboard() {
           <div className="col-span-1 md:col-span-3 border border-border bg-card rounded-xl p-5 shadow-sm">
              <div className="flex items-center justify-between mb-4 text-muted-foreground">
                 <span className="flex items-center gap-2 text-sm font-semibold"><Activity size={16}/> Lead status</span>
-                <div className="flex items-center gap-1.5 opacity-60">
-                   <PenLine size={14} className="hover:text-foreground cursor-pointer"/>
-                   <Maximize2 size={14} className="hover:text-foreground cursor-pointer"/>
-                   <MoreVertical size={14} className="hover:text-foreground cursor-pointer"/>
-                </div>
              </div>
              
              <div className="flex justify-between mt-2">
@@ -129,9 +221,6 @@ export default function Dashboard() {
             <div className="border border-border bg-card rounded-xl p-4 shadow-sm h-full flex flex-col justify-between">
               <div className="flex items-center justify-between text-muted-foreground">
                 <span className="flex items-center gap-2 text-xs font-semibold"><MessageSquare size={14}/> Messages sent</span>
-                <div className="flex items-center gap-1 opacity-60">
-                   <MoreVertical size={12} className="hover:text-foreground cursor-pointer"/>
-                </div>
               </div>
               <div className="flex justify-between items-end mt-2">
                  <div>
@@ -151,9 +240,6 @@ export default function Dashboard() {
             <div className="border border-border bg-card rounded-xl p-4 shadow-sm h-full flex flex-col justify-between">
               <div className="flex items-center justify-between text-muted-foreground">
                 <span className="flex items-center gap-2 text-xs font-semibold"><Workflow size={14}/> Executions</span>
-                <div className="flex items-center gap-1 opacity-60">
-                   <MoreVertical size={12} className="hover:text-foreground cursor-pointer"/>
-                </div>
               </div>
               <div className="flex justify-between items-end mt-2">
                  <div>
@@ -161,8 +247,8 @@ export default function Dashboard() {
                     <div className="text-[10px] font-medium text-emerald-500 mt-1 flex items-center gap-1">↗ 4.2% <span className="text-muted-foreground/60">(7d)</span></div>
                  </div>
                  <div className="w-24 h-10 flex items-end gap-1">
-                    {executionsData.map((e,i) => (
-                      <div key={i} className="w-full bg-primary/50 hover:bg-primary transition-colors rounded-t-sm" style={{height: `${Math.max(20, (e.count/stats?.totalExecutions)*100 || 0)}%`}}></div>
+                    {executionsData.map((e) => (
+                      <div key={e.status} className="w-full bg-primary/50 hover:bg-primary transition-colors rounded-t-sm" style={{height: `${Math.max(20, (e.count/stats?.totalExecutions)*100 || 0)}%`}}></div>
                     ))}
                  </div>
               </div>
@@ -173,18 +259,10 @@ export default function Dashboard() {
           <div className="col-span-1 md:col-span-6 border border-border bg-card rounded-xl p-5 shadow-sm">
              <div className="flex items-center justify-between mb-4 text-muted-foreground">
                 <span className="flex items-center gap-2 text-sm font-semibold"><Flag size={16}/> Pipeline growth</span>
-                <div className="flex items-center gap-1.5 opacity-60">
-                   <PenLine size={14} className="hover:text-foreground cursor-pointer"/>
-                   <Maximize2 size={14} className="hover:text-foreground cursor-pointer"/>
-                   <MoreVertical size={14} className="hover:text-foreground cursor-pointer"/>
-                </div>
              </div>
              <div className="h-40 w-full mt-4">
                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={[
-                    {name: 'Jan', active: 120, converted: 110}, {name: 'Feb', active: 118, converted: 110}, {name: 'Mar', active: 115, converted: 100},
-                    {name: 'Apr', active: 80, converted: 90}, {name: 'May', active: 60, converted: 70}, {name: 'Jun', active: 40, converted: 60}, {name: 'Jul', active: 20, converted: 40}
-                  ]}>
+                  <AreaChart data={pipelineData.length > 0 ? pipelineData : [{name:'N/A', active:0, converted:0}]}>
                     <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fill: 'var(--muted-foreground)'}} width={30}/>
                     <Tooltip cursor={{stroke: 'var(--border)'}} contentStyle={{borderRadius: '8px', border:'1px solid var(--border)', boxShadow:'0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
                     <Area type="monotone" dataKey="active" stroke="var(--primary)" fill="var(--primary)" fillOpacity={0.1} strokeWidth={2} />
@@ -198,34 +276,130 @@ export default function Dashboard() {
         {/* Board Header & Filters */}
         <div className="flex items-center justify-between mb-6">
            <div className="flex items-center gap-6 border-b border-border flex-1">
-              <span className="px-1 text-sm font-semibold text-foreground border-b-2 border-primary pb-2 cursor-pointer">Board</span>
-              <span className="px-1 text-sm font-medium text-muted-foreground hover:text-foreground pb-2 cursor-pointer transition-colors">Spreadsheet</span>
-              <span className="px-1 text-sm font-medium text-muted-foreground hover:text-foreground pb-2 cursor-pointer transition-colors">Calendar</span>
-              <span className="px-1 text-sm font-medium text-muted-foreground hover:text-foreground pb-2 cursor-pointer transition-colors">Timeline</span>
+              {[{id:'board',label:'Board'},{id:'spreadsheet',label:'Spreadsheet'},{id:'calendar',label:'Calendar'},{id:'timeline',label:'Timeline'}].map(tab => (
+                <button key={tab.id} onClick={() => setViewMode(tab.id)} className={`px-1 text-sm font-medium pb-2 cursor-pointer transition-colors ${viewMode === tab.id ? 'font-semibold text-foreground border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'}`}>{tab.label}</button>
+              ))}
            </div>
            <div className="flex items-center gap-4 text-sm font-medium text-muted-foreground pl-4 border-b border-border pb-2 flex-shrink-0">
-             <button className="flex items-center gap-2 hover:text-foreground transition-colors"><LayoutGrid size={16}/> Layout</button>
-             <button className="flex items-center gap-2 hover:text-foreground transition-colors"><Filter size={16}/> Filter</button>
+             <button onClick={() => setViewMode(viewMode === 'board' ? 'spreadsheet' : 'board')} className="flex items-center gap-2 hover:text-foreground transition-colors"><LayoutGrid size={16}/> Layout</button>
+             <div className="relative">
+               <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="appearance-none bg-transparent text-sm cursor-pointer hover:text-foreground transition-colors pr-4">
+                 <option value="all">All Status</option>
+                 <option value="backlog">Backlog</option>
+                 <option value="active">Active</option>
+                 <option value="review">Needs Review</option>
+                 <option value="converted">Converted</option>
+               </select>
+               <Filter size={14} className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none"/>
+             </div>
            </div>
         </div>
 
-        {/* Kanban Board */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start h-full pb-10">
+        {/* Spreadsheet View */}
+        {viewMode === 'spreadsheet' && (
+          <div className="mb-3 flex justify-end">
+            <Button variant="outline" size="sm" onClick={exportSpreadsheet} className="gap-2 text-xs"><Download size={14}/> Export CSV</Button>
+          </div>
+        )}
+        {viewMode === 'spreadsheet' && (
+          <div className="border border-border rounded-xl overflow-hidden mb-10">
+            <table className="w-full text-sm">
+              <thead><tr className="bg-muted/50 border-b border-border">
+                <th className="text-left p-3 font-semibold text-muted-foreground">ID</th>
+                <th className="text-left p-3 font-semibold text-muted-foreground">Name</th>
+                <th className="text-left p-3 font-semibold text-muted-foreground">Email</th>
+                <th className="text-left p-3 font-semibold text-muted-foreground">Company</th>
+                <th className="text-left p-3 font-semibold text-muted-foreground">Status</th>
+                <th className="text-left p-3 font-semibold text-muted-foreground">Created</th>
+              </tr></thead>
+              <tbody>
+                {filteredLeads.map(lead => (
+                  <tr key={lead.id} onClick={() => navigate('/leads')} className="border-b border-border hover:bg-muted/30 cursor-pointer transition-colors">
+                    <td className="p-3 text-muted-foreground font-mono text-xs">FR-{lead.id}</td>
+                    <td className="p-3 font-medium text-foreground">{lead.name}</td>
+                    <td className="p-3 text-muted-foreground">{lead.email}</td>
+                    <td className="p-3 text-muted-foreground">{lead.company || '—'}</td>
+                    <td className="p-3"><Badge variant="outline" className="text-xs capitalize">{lead.status}</Badge></td>
+                    <td className="p-3 text-muted-foreground text-xs">{lead.created_at ? new Date(lead.created_at).toLocaleDateString() : '—'}</td>
+                  </tr>
+                ))}
+                {filteredLeads.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No leads found</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Calendar View */}
+        {viewMode === 'calendar' && (
+          <div className="border border-border rounded-xl p-8 mb-10 bg-card">
+            <div className="grid grid-cols-7 gap-2 mb-4">{['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => <div key={d} className="text-center text-xs font-semibold text-muted-foreground py-2">{d}</div>)}</div>
+            <div className="grid grid-cols-7 gap-2">
+              {Array.from({length: 30}, (_, i) => {
+                const dayLeads = filteredLeads.filter(l => l.created_at && new Date(l.created_at).getDate() === (i+1));
+                return (
+                  <div key={i} className={`border border-border rounded-lg p-2 min-h-[80px] ${dayLeads.length > 0 ? 'bg-primary/5' : 'bg-background'}`}>
+                    <div className="text-xs font-semibold text-muted-foreground mb-1">{i+1}</div>
+                    {dayLeads.slice(0,2).map(l => <div key={l.id} className="text-[10px] bg-primary/10 text-primary rounded px-1.5 py-0.5 mb-0.5 truncate font-medium">{l.name}</div>)}
+                    {dayLeads.length > 2 && <div className="text-[10px] text-muted-foreground font-medium">+{dayLeads.length - 2} more</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Timeline View */}
+        {viewMode === 'timeline' && (
+          <div className="border border-border rounded-xl p-6 mb-10 bg-card">
+            <div className="space-y-4">
+              {filteredLeads.slice(0, 20).map((lead, i) => (
+                <div key={lead.id} className="flex items-start gap-4">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-3 h-3 rounded-full ${getTimelineDotColor(lead.status)}`}/>
+                    {i < Math.min(filteredLeads.length, 20) - 1 && <div className="w-0.5 h-8 bg-border"/>}
+                  </div>
+                  <div className="flex-1 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm text-foreground">{lead.name}</span>
+                      <Badge variant="outline" className="text-[10px] capitalize">{lead.status}</Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{lead.company || 'No company'} · {lead.email}</div>
+                    <div className="text-[11px] text-muted-foreground/60 mt-0.5">{lead.created_at ? new Date(lead.created_at).toLocaleDateString() : ''}</div>
+                  </div>
+                </div>
+              ))}
+              {filteredLeads.length === 0 && <div className="text-center text-muted-foreground py-8">No leads to display</div>}
+            </div>
+          </div>
+        )}
+
+        {/* Kanban Board (Board view) */}
+        {viewMode === 'board' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 items-start pb-10">
            
            {/* Column 1: Backlog */}
            <div className="flex flex-col gap-3">
              <div className="flex items-center justify-between pb-2 text-foreground mb-1 border-b border-border border-dashed">
                 <div className="flex items-center gap-2 font-semibold text-[13px]"><LayoutGrid size={16} className="text-muted-foreground"/> Backlog <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-[10px] font-bold">{backlog.length}</span></div>
-                <MoreVertical size={14} className="text-muted-foreground cursor-pointer hover:text-foreground transition-colors"/>
              </div>
+             {backlog.length === 0 && <div className="text-xs text-muted-foreground py-6 px-4 border rounded-xl border-dashed border-border bg-muted/30 text-center font-medium">No new leads</div>}
              {backlog.map((lead) => (
-                <div key={lead.id} className="bg-card rounded-xl p-4 shadow-sm border border-border hover:border-primary/30 hover:shadow-md transition-all cursor-pointer group">
+                <button key={lead.id} type="button" onClick={() => setExpandedCardId(expandedCardId === lead.id ? null : lead.id)} className="bg-card rounded-xl p-4 shadow-sm border border-border hover:border-primary/30 hover:shadow-md transition-all cursor-pointer group text-left w-full">
                   <div className="flex items-center justify-between mb-3 text-[11px] font-semibold">
                     <span className="text-muted-foreground flex items-center gap-1.5 group-hover:text-primary transition-colors"><LinkIcon size={12}/> FR-{lead.id}</span>
                     <Badge variant="outline" className="text-emerald-600 bg-emerald-500/10 border-emerald-500/20 uppercase tracking-widest text-[9px] hover:bg-emerald-500/20"><Flag size={10} className="mr-1 inline"/> New</Badge>
                   </div>
                   <h4 className="font-bold text-foreground text-[14px] leading-snug mb-1">{lead.company || lead.name}</h4>
                   <p className="text-[12px] text-muted-foreground font-medium mb-4 flex items-center gap-1.5"><Calendar size={12}/> Prospecting</p>
+                  {expandedCardId === lead.id && (
+                    <div className="mb-3 p-3 bg-muted/50 rounded-lg text-xs space-y-1">
+                      <div><span className="font-semibold text-muted-foreground">Name:</span> <span className="text-foreground">{lead.name}</span></div>
+                      <div><span className="font-semibold text-muted-foreground">Email:</span> <span className="text-foreground">{lead.email}</span></div>
+                      <div><span className="font-semibold text-muted-foreground">Company:</span> <span className="text-foreground">{lead.company || '—'}</span></div>
+                      <div><span className="font-semibold text-muted-foreground">Title:</span> <span className="text-foreground">{lead.title || '—'}</span></div>
+                      <Button size="sm" variant="outline" className="mt-2 text-xs w-full" onClick={e => { e.stopPropagation(); navigate('/leads'); }}>View in Leads →</Button>
+                    </div>
+                  )}
                   <Separator className="mb-3" />
                   <div className="flex items-center justify-between">
                      <div className="flex items-center gap-2">
@@ -233,7 +407,7 @@ export default function Dashboard() {
                      </div>
                      <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1"><MessageSquare size={12}/> 0</span>
                   </div>
-                </div>
+                </button>
              ))}
            </div>
 
@@ -241,10 +415,9 @@ export default function Dashboard() {
            <div className="flex flex-col gap-3">
              <div className="flex items-center justify-between pb-2 text-foreground mb-1 border-b border-primary/30 border-dashed">
                 <div className="flex items-center gap-2 font-semibold text-[13px]"><Activity size={16} className="text-primary"/> Active <span className="ml-2 bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[10px] font-bold">{inProgress.length}</span></div>
-                <MoreVertical size={14} className="text-muted-foreground cursor-pointer hover:text-foreground transition-colors"/>
              </div>
              {inProgress.map((lead) => (
-                <div key={lead.id} className="bg-card rounded-xl p-4 shadow-sm border border-primary/20 relative z-10 transform sm:-translate-y-1 hover:shadow-md hover:border-primary/40 transition-all cursor-pointer group">
+                <button key={lead.id} type="button" onClick={() => setExpandedCardId(expandedCardId === lead.id ? null : lead.id)} className="bg-card rounded-xl p-4 shadow-sm border border-primary/20 relative hover:shadow-md hover:border-primary/40 transition-all cursor-pointer group text-left w-full">
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-primary/50 rounded-t-xl opacity-80" />
                   <div className="flex items-center justify-between mb-3 mt-1 text-[11px] font-semibold">
                     <span className="text-muted-foreground flex items-center gap-1.5 group-hover:text-primary transition-colors"><LinkIcon size={12}/> FR-{lead.id}</span>
@@ -252,6 +425,15 @@ export default function Dashboard() {
                   </div>
                   <h4 className="font-bold text-foreground text-[14px] leading-snug mb-1">{lead.company || lead.name}</h4>
                   <p className="text-[12px] text-muted-foreground font-medium mb-4 flex items-center gap-1.5"><Workflow size={12}/> Multi-channel drip</p>
+                  {expandedCardId === lead.id && (
+                    <div className="mb-3 p-3 bg-muted/50 rounded-lg text-xs space-y-1">
+                      <div><span className="font-semibold text-muted-foreground">Name:</span> <span className="text-foreground">{lead.name}</span></div>
+                      <div><span className="font-semibold text-muted-foreground">Email:</span> <span className="text-foreground">{lead.email}</span></div>
+                      <div><span className="font-semibold text-muted-foreground">Company:</span> <span className="text-foreground">{lead.company || '—'}</span></div>
+                      <div><span className="font-semibold text-muted-foreground">Title:</span> <span className="text-foreground">{lead.title || '—'}</span></div>
+                      <Button size="sm" variant="outline" className="mt-2 text-xs w-full" onClick={e => { e.stopPropagation(); navigate('/leads'); }}>View in Leads →</Button>
+                    </div>
+                  )}
                   <Separator className="mb-3" />
                   <div className="flex items-center justify-between">
                      <div className="flex items-center -space-x-1.5">
@@ -260,7 +442,7 @@ export default function Dashboard() {
                      </div>
                      <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1"><MessageSquare size={12}/> {(lead.email.length % 5) + 1}</span>
                   </div>
-                </div>
+                </button>
              ))}
            </div>
 
@@ -268,18 +450,25 @@ export default function Dashboard() {
            <div className="flex flex-col gap-3">
              <div className="flex items-center justify-between pb-2 text-foreground mb-1 border-b border-amber-500/30 border-dashed">
                 <div className="flex items-center gap-2 font-semibold text-[13px]"><AlertCircleIcon className="text-amber-500"/> Needs Review <span className="ml-2 bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded text-[10px] font-bold">{validation.length}</span></div>
-                <MoreVertical size={14} className="text-muted-foreground cursor-pointer hover:text-foreground transition-colors"/>
              </div>
              {validation.length === 0 && <div className="text-xs text-muted-foreground py-6 px-4 border rounded-xl border-dashed border-border bg-muted/30 text-center font-medium">No alerts today</div>}
              {validation.map((lead) => (
-                <div key={lead.id} className="bg-card rounded-xl p-4 shadow-sm border border-border hover:border-amber-500/30 hover:shadow-md transition-all cursor-pointer opacity-90 group">
+                <button key={lead.id} type="button" onClick={() => setExpandedCardId(expandedCardId === lead.id ? null : lead.id)} className="bg-card rounded-xl p-4 shadow-sm border border-border hover:border-amber-500/30 hover:shadow-md transition-all cursor-pointer opacity-90 group text-left w-full">
                   <div className="flex items-center justify-between mb-3 text-[11px] font-semibold">
                     <span className="text-muted-foreground flex items-center gap-1.5 group-hover:text-primary transition-colors"><LinkIcon size={12}/> FR-{lead.id}</span>
                     <Badge variant="outline" className="text-amber-600 bg-amber-500/10 border-amber-500/20 uppercase tracking-widest text-[9px] hover:bg-amber-500/20"><Flag size={10} className="mr-1 inline"/> Review</Badge>
                   </div>
                   <h4 className="font-bold text-foreground text-[14px] leading-snug mb-1">{lead.company || lead.name}</h4>
                   <p className="text-[12px] text-muted-foreground font-medium flex items-center gap-1.5"><Activity size={12}/> {lead.status}</p>
-                </div>
+                  {expandedCardId === lead.id && (
+                    <div className="mt-3 p-3 bg-muted/50 rounded-lg text-xs space-y-1">
+                      <div><span className="font-semibold text-muted-foreground">Name:</span> <span className="text-foreground">{lead.name}</span></div>
+                      <div><span className="font-semibold text-muted-foreground">Email:</span> <span className="text-foreground">{lead.email}</span></div>
+                      <div><span className="font-semibold text-muted-foreground">Company:</span> <span className="text-foreground">{lead.company || '—'}</span></div>
+                      <Button size="sm" variant="outline" className="mt-2 text-xs w-full" onClick={e => { e.stopPropagation(); navigate('/leads'); }}>View in Leads →</Button>
+                    </div>
+                  )}
+                </button>
              ))}
            </div>
 
@@ -287,21 +476,30 @@ export default function Dashboard() {
            <div className="flex flex-col gap-3">
              <div className="flex items-center justify-between pb-2 text-foreground mb-1 border-b border-emerald-500/30 border-dashed">
                 <div className="flex items-center gap-2 font-semibold text-[13px]"><CheckCircleIcon className="text-emerald-500"/> Converted <span className="ml-2 bg-emerald-500/10 text-emerald-600 px-1.5 py-0.5 rounded text-[10px] font-bold">{done.length}</span></div>
-                <MoreVertical size={14} className="text-muted-foreground cursor-pointer hover:text-foreground transition-colors"/>
              </div>
+             {done.length === 0 && <div className="text-xs text-muted-foreground py-6 px-4 border rounded-xl border-dashed border-border bg-muted/30 text-center font-medium">No converted leads yet</div>}
              {done.map((lead) => (
-                <div key={lead.id} className="bg-card rounded-xl p-4 shadow-sm border border-border hover:shadow-md transition-all cursor-pointer border-l-4 border-l-emerald-500 group">
+                <button key={lead.id} type="button" onClick={() => setExpandedCardId(expandedCardId === lead.id ? null : lead.id)} className="bg-card rounded-xl p-4 shadow-sm border border-border hover:shadow-md transition-all cursor-pointer border-l-4 border-l-emerald-500 group text-left w-full">
                   <div className="flex items-center justify-between mb-3 text-[11px] font-semibold">
                     <span className="text-muted-foreground flex items-center gap-1.5 group-hover:text-primary transition-colors"><LinkIcon size={12}/> FR-{lead.id}</span>
                     <span className="text-emerald-600 text-[10px] font-bold tracking-wide uppercase">Won</span>
                   </div>
                   <h4 className="font-bold text-foreground text-[14px] leading-snug mb-1">{lead.company || lead.name}</h4>
                   <p className="text-[12px] text-muted-foreground font-medium flex items-center gap-1.5"><Calendar size={12}/> Closed</p>
-                </div>
+                  {expandedCardId === lead.id && (
+                    <div className="mt-3 p-3 bg-muted/50 rounded-lg text-xs space-y-1">
+                      <div><span className="font-semibold text-muted-foreground">Name:</span> <span className="text-foreground">{lead.name}</span></div>
+                      <div><span className="font-semibold text-muted-foreground">Email:</span> <span className="text-foreground">{lead.email}</span></div>
+                      <div><span className="font-semibold text-muted-foreground">Company:</span> <span className="text-foreground">{lead.company || '—'}</span></div>
+                      <Button size="sm" variant="outline" className="mt-2 text-xs w-full" onClick={e => { e.stopPropagation(); navigate('/leads'); }}>View in Leads →</Button>
+                    </div>
+                  )}
+                </button>
              ))}
            </div>
 
         </div>
+        )}
       </div>
     </div>
   );

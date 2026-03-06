@@ -8,6 +8,8 @@ import WorkflowBuilder from './pages/WorkflowBuilder';
 import Executions from './pages/Executions';
 import Settings from './pages/Settings';
 import AIChat from './pages/AIChat';
+import Messages from './pages/Messages';
+import Channels from './pages/Channels';
 
 function App() {
   return (
@@ -18,6 +20,8 @@ function App() {
         <Route path="/leads" element={<Leads />} />
         <Route path="/workflows" element={<Workflows />} />
         <Route path="/executions" element={<Executions />} />
+        <Route path="/messages" element={<Messages />} />
+        <Route path="/channels" element={<Channels />} />
         <Route path="/ai" element={<AIChat />} />
         <Route path="/settings" element={<Settings />} />
       </Route>

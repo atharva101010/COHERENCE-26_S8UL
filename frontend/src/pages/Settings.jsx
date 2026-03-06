@@ -97,6 +97,10 @@ SafetyGauge.propTypes = {
   maxScore: PropTypes.number,
 };
 
+function parseCredConfig(config) {
+  return typeof config === 'string' ? JSON.parse(config) : config;
+}
+
 export default function Settings() {
   const [tab, setTab] = useState('safety'); // 'safety' | 'blacklist' | 'credentials'
   const [credentials, setCredentials] = useState([]);
@@ -525,7 +529,7 @@ export default function Settings() {
                     {creds.length > 0 && (
                       <div className="divide-y divide-zinc-100">
                         {creds.map(cred => {
-                          const config = revealedIds.has(cred.id) ? revealedData[cred.id] : JSON.parse(cred.config);
+                          const config = revealedIds.has(cred.id) ? revealedData[cred.id] : parseCredConfig(cred.config);
                           return (
                             <div key={cred.id} className="flex items-center justify-between px-4 py-3">
                               <div className="flex items-center gap-3 min-w-0">

@@ -112,7 +112,7 @@ router.post('/daily-stats/reset', async (req, res) => {
     const today = new Date().toISOString().split('T')[0];
     const { error } = await supabase
       .from('daily_send_counts')
-      .upsert({ date: today, count: 0 });
+      .upsert({ date: today, count: 0 }, { onConflict: 'date' });
     if (error) return res.status(500).json({ error: error.message });
     res.json({ success: true, date: today, count: 0 });
   } catch (err) {

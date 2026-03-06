@@ -160,12 +160,19 @@ Available node types and their data fields:
 - startNode: { label, trigger: "manual"|"webhook"|"scheduled" }
 - aiGenerateNode: { label, prompt (use {{name}}, {{company}}, {{title}}, {{email}} placeholders), tone: "professional"|"friendly"|"casual"|"formal"|"persuasive", maxLength: number }
 - emailNode: { label, subject (supports {{name}}, {{company}} placeholders), fromName }
+- whatsappNode: { label, phoneNumber (use {{phone}} placeholder), waMessage }
+- telegramNode: { label, chatId, tgMessage }
+- discordNode: { label, webhookUrl, dcMessage }
+- slackNode: { label, channel (e.g. "general"), message }
+- smsNode: { label, to (phone number), smsMessage }
 - delayNode: { label, duration: number, unit: "seconds"|"minutes"|"hours"|"days" }
 - conditionNode: { label, field: "status"|"company"|"title", operator: "equals"|"not_equals"|"contains", value }
 - updateLeadNode: { label, status: "new"|"contacted"|"replied"|"converted"|"bounced"|"unsubscribed" }
 - endNode: { label }
 - filterNode: { label, filterField, filterOp, filterValue }
 - splitNode: { label, splitMode: "round_robin"|"random", percentage: number }
+
+When the user mentions WhatsApp, Telegram, Discord, or Slack, use those node types. If they mention multi-channel, add multiple messaging nodes in parallel using a split node.
 
 Node format: { id: "node-1", type: "startNode", position: { x: 250, y: number }, data: { ... } }
 Edge format: { id: "edge-1", source: "node-1", target: "node-2" }
@@ -246,6 +253,346 @@ No markdown, no code fences, no explanation.`;
     });
   } catch (err) {
     console.error('AI workflow creation error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Helper: map entry status to message DB status
+function resolveMessageStatus(entryStatus) {
+  if (entryStatus === 'sent') return 'sent';
+  if (entryStatus === 'logged') return 'draft';
+  return entryStatus;
+}
+
+// Individual channel handlers for direct send
+async function handleEmailDirect(message, recipient) {
+  const entry = { channel: 'email', status: 'pending', detail: '' };
+  const nodemailer = (await import('nodemailer')).default;
+  let transporter;
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (host && user && pass) {
+    transporter = nodemailer.createTransport({
+      host,
+      port: Number.parseInt(process.env.SMTP_PORT || '587', 10),
+      secure: Number.parseInt(process.env.SMTP_PORT || '587', 10) === 465,
+      auth: { user, pass },
+    });
+  } else {
+    const testAccount = await nodemailer.createTestAccount();
+    transporter = nodemailer.createTransport({
+      host: 'smtp.ethereal.email', port: 587, secure: false,
+      auth: { user: testAccount.user, pass: testAccount.pass },
+    });
+    entry.detail = 'Using Ethereal test email';
+  }
+
+  const toEmail = recipient?.email;
+  if (!toEmail) { entry.status = 'skipped'; entry.detail = 'No email address'; return entry; }
+
+  const info = await transporter.sendMail({
+    from: `"FlowReach AI" <${process.env.SMTP_FROM || process.env.SMTP_USER || 'flowreach@example.com'}>`,
+    to: toEmail,
+    subject: message.subject || 'Message from FlowReach AI',
+    html: message.body.replaceAll('\n', '<br>'),
+  });
+  entry.status = 'sent';
+  entry.detail = `Message-ID: ${info.messageId}`;
+  return entry;
+}
+
+async function handleWhatsAppDirect(message, recipient) {
+  const entry = { channel: 'whatsapp', status: 'pending', detail: '' };
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const toPhone = recipient?.phone || recipient?.whatsapp;
+  if (!token || !phoneNumberId) { entry.status = 'logged'; entry.detail = 'WhatsApp not configured — logged only'; return entry; }
+  if (!toPhone) { entry.status = 'skipped'; entry.detail = 'No phone number'; return entry; }
+
+  const resp = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to: toPhone.replaceAll(/\D/g, ''),
+      type: 'text',
+      text: { body: message.body },
+    }),
+  });
+  if (resp.ok) { entry.status = 'sent'; entry.detail = 'WhatsApp message sent'; }
+  else { const err = await resp.json(); entry.status = 'failed'; entry.detail = JSON.stringify(err.error || err); }
+  return entry;
+}
+
+async function handleTelegramDirect(message, recipient) {
+  const entry = { channel: 'telegram', status: 'pending', detail: '' };
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = recipient?.telegram || recipient?.chatId;
+  if (!botToken) { entry.status = 'logged'; entry.detail = 'Telegram bot not configured — logged only'; return entry; }
+  if (!chatId) { entry.status = 'skipped'; entry.detail = 'No chat ID'; return entry; }
+
+  const resp = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text: message.body, parse_mode: 'HTML' }),
+  });
+  if (resp.ok) { entry.status = 'sent'; entry.detail = 'Telegram message sent'; }
+  else { const err = await resp.json(); entry.status = 'failed'; entry.detail = err.description || 'Telegram error'; }
+  return entry;
+}
+
+async function handleDiscordDirect(message, recipient) {
+  const entry = { channel: 'discord', status: 'pending', detail: '' };
+  const webhookUrl = recipient?.discordWebhook || process.env.DISCORD_WEBHOOK_URL;
+  if (!webhookUrl) { entry.status = 'logged'; entry.detail = 'Discord webhook not configured — logged only'; return entry; }
+
+  const resp = await fetch(webhookUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content: message.body.substring(0, 2000) }),
+  });
+  entry.status = resp.ok || resp.status === 204 ? 'sent' : 'failed';
+  entry.detail = entry.status === 'sent' ? 'Discord message sent' : `Discord error (${resp.status})`;
+  return entry;
+}
+
+async function handleSlackDirect(message, recipient) {
+  const entry = { channel: 'slack', status: 'pending', detail: '' };
+  const slackWebhook = recipient?.slackWebhook || process.env.SLACK_WEBHOOK_URL;
+  if (!slackWebhook) { entry.status = 'logged'; entry.detail = 'Slack webhook not configured — logged only'; return entry; }
+
+  const resp = await fetch(slackWebhook, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: message.body }),
+  });
+  entry.status = resp.ok ? 'sent' : 'failed';
+  entry.detail = entry.status === 'sent' ? 'Slack message sent' : `Slack error (${resp.status})`;
+  return entry;
+}
+
+const directHandlers = { email: handleEmailDirect, whatsapp: handleWhatsAppDirect, telegram: handleTelegramDirect, discord: handleDiscordDirect, slack: handleSlackDirect };
+
+// Helper: send a message via a single channel, returns { channel, status, detail }
+async function sendViaChannel(channel, message, recipient) {
+  const handler = directHandlers[channel];
+  if (!handler) return { channel, status: 'skipped', detail: `Unknown channel: ${channel}` };
+  return handler(message, recipient);
+}
+
+// Individual channel handlers for bulk send
+async function handleBulkEmail(message, lead) {
+  const entry = { channel: 'email', status: 'pending', detail: '' };
+  const nodemailer = (await import('nodemailer')).default;
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (!host || !user || !pass) { entry.status = 'skipped'; entry.detail = 'SMTP not configured'; return entry; }
+  if (!lead.email) { entry.status = 'skipped'; entry.detail = 'No email address'; return entry; }
+
+  const transporter = nodemailer.createTransport({
+    host, port: Number.parseInt(process.env.SMTP_PORT || '587', 10),
+    secure: Number.parseInt(process.env.SMTP_PORT || '587', 10) === 465,
+    auth: { user, pass },
+  });
+
+  const info = await transporter.sendMail({
+    from: `"FlowReach AI" <${process.env.SMTP_FROM || process.env.SMTP_USER || 'flowreach@example.com'}>`,
+    to: lead.email,
+    subject: message.subject || 'Message from FlowReach AI',
+    html: message.body.replaceAll('\n', '<br>'),
+  });
+  entry.status = 'sent';
+  entry.detail = `Message-ID: ${info.messageId}`;
+  return entry;
+}
+
+async function handleBulkTelegram(message, lead) {
+  const entry = { channel: 'telegram', status: 'pending', detail: '' };
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!botToken || !chatId) { entry.status = 'skipped'; entry.detail = 'Telegram not configured'; return entry; }
+
+  const resp = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text: `[To: ${lead.name}]\n\n${message.body}`, parse_mode: 'HTML' }),
+  });
+  entry.status = resp.ok ? 'sent' : 'failed';
+  entry.detail = resp.ok ? 'Telegram sent' : 'Telegram error';
+  return entry;
+}
+
+async function handleBulkDiscord(message, lead) {
+  const entry = { channel: 'discord', status: 'pending', detail: '' };
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+  if (!webhookUrl) { entry.status = 'skipped'; entry.detail = 'Discord not configured'; return entry; }
+
+  const resp = await fetch(webhookUrl, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content: `**To: ${lead.name}** (${lead.email})\n\n${message.body}`.substring(0, 2000) }),
+  });
+  entry.status = (resp.ok || resp.status === 204) ? 'sent' : 'failed';
+  entry.detail = entry.status === 'sent' ? 'Discord sent' : `Discord error (${resp.status})`;
+  return entry;
+}
+
+async function handleBulkSlack(message, lead) {
+  const entry = { channel: 'slack', status: 'pending', detail: '' };
+  const slackWebhook = process.env.SLACK_WEBHOOK_URL;
+  if (!slackWebhook) { entry.status = 'skipped'; entry.detail = 'Slack not configured'; return entry; }
+
+  const resp = await fetch(slackWebhook, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: `*To: ${lead.name}* (${lead.email})\n\n${message.body}` }),
+  });
+  entry.status = resp.ok ? 'sent' : 'failed';
+  entry.detail = entry.status === 'sent' ? 'Slack sent' : `Slack error (${resp.status})`;
+  return entry;
+}
+
+const bulkHandlers = { email: handleBulkEmail, telegram: handleBulkTelegram, discord: handleBulkDiscord, slack: handleBulkSlack };
+
+// Helper: send a message via a single channel for bulk mode (uses env-based recipients)
+async function sendBulkViaChannel(channel, message, lead) {
+  const handler = bulkHandlers[channel];
+  if (!handler) return { channel, status: 'skipped', detail: `Unknown channel: ${channel}` };
+  return handler(message, lead);
+}
+
+// POST /api/ai/send — Send a generated message via multiple channels
+router.post('/send', async (req, res) => {
+  try {
+    const { channels, message, recipient } = req.body;
+    if (!channels || !Array.isArray(channels) || channels.length === 0) {
+      return res.status(400).json({ error: 'At least one channel is required' });
+    }
+    if (!message?.body) {
+      return res.status(400).json({ error: 'Message body is required' });
+    }
+
+    const results = [];
+
+    for (const channel of channels) {
+      let entry;
+      try {
+        entry = await sendViaChannel(channel, message, recipient);
+      } catch (chErr) {
+        entry = { channel, status: 'failed', detail: chErr.message };
+      }
+
+      // Store message record
+      await supabase.from('messages').insert({
+        lead_id: recipient?.leadId || null,
+        type: channel,
+        channel: channel,
+        subject: message.subject || null,
+        body: message.body,
+        status: resolveMessageStatus(entry.status),
+      }).then(() => {}).catch(() => {});
+
+      results.push(entry);
+    }
+
+    res.json({ results });
+  } catch (err) {
+    console.error('AI send error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Helper: process a single lead during bulk send
+async function processBulkLead(lead, channels, genOpts) {
+  const leadResult = { leadId: lead.id, name: lead.name, email: lead.email, company: lead.company, channels: [] };
+  try {
+    const generated = await generateMessage({ lead, ...genOpts });
+    const message = { subject: generated.subject, body: generated.body };
+
+    for (const channel of channels) {
+      let entry;
+      try {
+        entry = await sendBulkViaChannel(channel, message, lead);
+      } catch (chErr) {
+        entry = { channel, status: 'failed', detail: chErr.message };
+      }
+
+      await supabase.from('messages').insert({
+        lead_id: lead.id,
+        type: channel,
+        channel,
+        subject: message.subject || null,
+        body: message.body,
+        status: resolveMessageStatus(entry.status),
+      }).catch(() => {});
+
+      leadResult.channels.push(entry);
+    }
+  } catch (genErr) {
+    leadResult.channels.push({ channel: 'ai', status: 'failed', detail: `Generation failed: ${genErr.message}` });
+  }
+  return leadResult;
+}
+
+// Helper: compute bulk send summary
+function computeBulkSummary(results, leadCount) {
+  const totalSent = results.reduce((acc, r) => acc + r.channels.filter(c => c.status === 'sent').length, 0);
+  const totalFailed = results.reduce((acc, r) => acc + r.channels.filter(c => c.status === 'failed').length, 0);
+  const totalSkipped = results.reduce((acc, r) => acc + r.channels.filter(c => c.status === 'skipped').length, 0);
+  return { totalLeads: leadCount, totalSent, totalFailed, totalSkipped };
+}
+
+// POST /api/ai/bulk-send — Generate AI messages and send to multiple leads in bulk
+router.post('/bulk-send', async (req, res) => {
+  try {
+    const { leadIds, channels, prompt, tone, maxLength, companyName, senderName, industry, painPoints, callToAction, signature, language, messageType } = req.body;
+
+    if (!channels || !Array.isArray(channels) || channels.length === 0) {
+      return res.status(400).json({ error: 'At least one channel is required' });
+    }
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt template is required' });
+    }
+
+    // Fetch leads — either specific IDs or all
+    let leads = [];
+    if (leadIds && Array.isArray(leadIds) && leadIds.length > 0) {
+      const { data, error } = await supabase.from('leads').select('*').in('id', leadIds);
+      if (error) return res.status(500).json({ error: 'Failed to fetch leads: ' + error.message });
+      leads = data || [];
+    } else {
+      const { data, error } = await supabase.from('leads').select('*').order('created_at', { ascending: false }).limit(500);
+      if (error) return res.status(500).json({ error: 'Failed to fetch leads: ' + error.message });
+      leads = data || [];
+    }
+
+    if (leads.length === 0) {
+      return res.status(400).json({ error: 'No leads found to send to' });
+    }
+
+    const io = req.app.get('io');
+    const genOpts = { prompt, tone, maxLength, companyName, senderName, industry, painPoints, callToAction, signature, language, messageType };
+    let completed = 0;
+    const results = [];
+
+    for (const lead of leads) {
+      const leadResult = await processBulkLead(lead, channels, genOpts);
+      results.push(leadResult);
+      completed++;
+      if (io) {
+        io.emit('bulk-send:progress', { completed, total: leads.length, lead: lead.name });
+      }
+    }
+
+    const summary = computeBulkSummary(results, leads.length);
+
+    if (io) {
+      io.emit('bulk-send:complete', { totalSent: summary.totalSent, totalFailed: summary.totalFailed, totalSkipped: summary.totalSkipped, leadCount: leads.length });
+    }
+
+    res.json({ results, summary });
+  } catch (err) {
+    console.error('Bulk send error:', err);
     res.status(500).json({ error: err.message });
   }
 });

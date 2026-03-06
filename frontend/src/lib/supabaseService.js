@@ -587,7 +587,7 @@ export async function getCurrentUserId() {
 // AI MESSAGE GENERATION
 // ──────────────────────────────────────────────
 
-const API_BASE = 'http://localhost:3001';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export async function generateAIMessage({ leadId, prompt, tone, maxLength, credentialId, model, lead }) {
   const res = await fetch(`${API_BASE}/api/ai/generate`, {
@@ -730,5 +730,69 @@ export async function fetchSafetyScore() {
 export async function resetSeedData() {
   const res = await fetch(`${API_BASE}/api/seed/reset`, { method: 'POST' });
   if (!res.ok) throw new Error('Failed to reset demo data');
+  return res.json();
+}
+
+// ──────────────────────────────────────────────
+// CHANNELS
+// ──────────────────────────────────────────────
+
+export async function fetchChannelAccounts() {
+  const res = await fetch(`${API_BASE}/api/channels/accounts`);
+  if (!res.ok) throw new Error('Failed to fetch channel accounts');
+  return res.json();
+}
+
+export async function createChannelAccount(data) {
+  const res = await fetch(`${API_BASE}/api/channels/accounts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to create channel account');
+  return res.json();
+}
+
+export async function updateChannelAccount(id, data) {
+  const res = await fetch(`${API_BASE}/api/channels/accounts/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to update channel account');
+  return res.json();
+}
+
+export async function deleteChannelAccount(id) {
+  const res = await fetch(`${API_BASE}/api/channels/accounts/${id}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Failed to delete channel account');
+  return res.json();
+}
+
+export async function fetchChannelInbox({ channel, page = 1, limit = 50 } = {}) {
+  const params = new URLSearchParams({ page, limit });
+  if (channel) params.set('channel', channel);
+  const res = await fetch(`${API_BASE}/api/channels/inbox?${params.toString()}`);
+  if (!res.ok) throw new Error('Failed to fetch inbox');
+  return res.json();
+}
+
+// ──────────────────────────────────────────────
+// MESSAGES
+// ──────────────────────────────────────────────
+
+export async function fetchMessages({ search, status, type, page = 1, limit = 50 } = {}) {
+  const params = new URLSearchParams({ page, limit });
+  if (search) params.set('search', search);
+  if (status) params.set('status', status);
+  if (type) params.set('type', type);
+  const res = await fetch(`${API_BASE}/api/messages?${params.toString()}`);
+  if (!res.ok) throw new Error('Failed to fetch messages');
+  return res.json();
+}
+
+export async function fetchMessageById(id) {
+  const res = await fetch(`${API_BASE}/api/messages/${id}`);
+  if (!res.ok) throw new Error('Failed to fetch message');
   return res.json();
 }
