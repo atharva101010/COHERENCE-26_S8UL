@@ -256,8 +256,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="p-8 max-w-[1600px] mx-auto w-full flex-1">
-        <div className="mb-8">
+      <div className="p-6 lg:p-8 max-w-[1600px] mx-auto w-full flex-1 overflow-y-auto">
+        <div className="mb-6">
           <h1 className="text-2xl font-bold text-foreground mb-1 tracking-tight">Leads report</h1>
           <p className="text-[13px] text-muted-foreground max-w-2xl">
             Stay on top of your outreach, monitor conversions, and track status. Streamline your workflow and transform how you deliver results.
@@ -265,7 +265,7 @@ export default function Dashboard() {
         </div>
 
         {/* Metrics Row */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-5 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-6">
           
           {/* Status Breakdown (Left Card) */}
           <div className="col-span-1 md:col-span-3 border border-border bg-card rounded-xl p-5 shadow-sm">
@@ -300,7 +300,7 @@ export default function Dashboard() {
           </div>
 
           {/* Messages & Actions (Middle Cards stacked) */}
-          <div className="col-span-1 md:col-span-3 grid grid-rows-2 gap-5 h-full">
+          <div className="col-span-1 md:col-span-3 grid grid-rows-2 gap-4 h-full">
             <div className="border border-border bg-card rounded-xl p-4 shadow-sm h-full flex flex-col justify-between">
               <div className="flex items-center justify-between text-muted-foreground">
                 <span className="flex items-center gap-2 text-xs font-semibold"><MessageSquare size={14}/> Messages sent</span>
@@ -357,9 +357,9 @@ export default function Dashboard() {
         </div>
 
         {/* Quick Access Features */}
-        <div className="mb-8">
+        <div className="mb-6">
           <h2 className="text-sm font-semibold text-muted-foreground mb-3 tracking-wide uppercase">Quick Access</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
             {[
               { label: 'Lead Scoring', icon: Target, path: '/lead-scoring', color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/30 dark:bg-red-950/30' },
               { label: 'Email Tracking', icon: MailCheck, path: '/email-tracking', color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-900/30 dark:bg-indigo-950/30' },
@@ -377,7 +377,7 @@ export default function Dashboard() {
         </div>
 
         {/* Detailed Insights Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="border border-border bg-card rounded-xl p-5 shadow-sm">
             <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><Target size={14} className="text-red-500" /> Scoring Summary</h3>
             <div className="space-y-2">
@@ -446,7 +446,7 @@ export default function Dashboard() {
         </div>
 
         {/* Board Header & Filters */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
            <div className="flex items-center gap-6 border-b border-border flex-1">
               {[{id:'board',label:'Board'},{id:'spreadsheet',label:'Spreadsheet'},{id:'calendar',label:'Calendar'},{id:'timeline',label:'Timeline'}].map(tab => (
                 <button key={tab.id} onClick={() => setViewMode(tab.id)} className={`px-1 text-sm font-medium pb-2 cursor-pointer transition-colors ${viewMode === tab.id ? 'font-semibold text-foreground border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'}`}>{tab.label}</button>
@@ -547,11 +547,11 @@ export default function Dashboard() {
 
         {/* Kanban Board (Board view) */}
         {viewMode === 'board' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 items-start pb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start pb-10">
            
            {/* Column 1: Backlog */}
-           <div className="flex flex-col gap-3">
-             <div className="flex items-center justify-between pb-2 text-foreground mb-1 border-b border-border border-dashed">
+           <div className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-1">
+             <div className="flex items-center justify-between pb-2 text-foreground mb-1 border-b border-border border-dashed sticky top-0 bg-background z-[1]">
                 <div className="flex items-center gap-2 font-semibold text-[13px]"><LayoutGrid size={16} className="text-muted-foreground"/> Backlog <span className="ml-2 bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-[10px] font-bold">{backlog.length}</span></div>
              </div>
              {backlog.length === 0 && <div className="text-xs text-muted-foreground py-6 px-4 border rounded-xl border-dashed border-border bg-muted/30 text-center font-medium">No new leads</div>}
@@ -584,8 +584,8 @@ export default function Dashboard() {
            </div>
 
            {/* Column 2: In Progress */}
-           <div className="flex flex-col gap-3">
-             <div className="flex items-center justify-between pb-2 text-foreground mb-1 border-b border-primary/30 border-dashed">
+           <div className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-1">
+             <div className="flex items-center justify-between pb-2 text-foreground mb-1 border-b border-primary/30 border-dashed sticky top-0 bg-background z-[1]">
                 <div className="flex items-center gap-2 font-semibold text-[13px]"><Activity size={16} className="text-primary"/> Active <span className="ml-2 bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[10px] font-bold">{inProgress.length}</span></div>
              </div>
              {inProgress.map((lead) => (
@@ -619,8 +619,8 @@ export default function Dashboard() {
            </div>
 
            {/* Column 3: Validation */}
-           <div className="flex flex-col gap-3">
-             <div className="flex items-center justify-between pb-2 text-foreground mb-1 border-b border-amber-500/30 border-dashed">
+           <div className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-1">
+             <div className="flex items-center justify-between pb-2 text-foreground mb-1 border-b border-amber-500/30 border-dashed sticky top-0 bg-background z-[1]">
                 <div className="flex items-center gap-2 font-semibold text-[13px]"><AlertCircleIcon className="text-amber-500"/> Needs Review <span className="ml-2 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded text-[10px] font-bold">{validation.length}</span></div>
              </div>
              {validation.length === 0 && <div className="text-xs text-muted-foreground py-6 px-4 border rounded-xl border-dashed border-border bg-muted/30 text-center font-medium">No alerts today</div>}
@@ -645,8 +645,8 @@ export default function Dashboard() {
            </div>
 
            {/* Column 4: Done */}
-           <div className="flex flex-col gap-3">
-             <div className="flex items-center justify-between pb-2 text-foreground mb-1 border-b border-emerald-500/30 border-dashed">
+           <div className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-1">
+             <div className="flex items-center justify-between pb-2 text-foreground mb-1 border-b border-emerald-500/30 border-dashed sticky top-0 bg-background z-[1]">
                 <div className="flex items-center gap-2 font-semibold text-[13px]"><CheckCircleIcon className="text-emerald-500"/> Converted <span className="ml-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded text-[10px] font-bold">{done.length}</span></div>
              </div>
              {done.length === 0 && <div className="text-xs text-muted-foreground py-6 px-4 border rounded-xl border-dashed border-border bg-muted/30 text-center font-medium">No converted leads yet</div>}

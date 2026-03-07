@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useLocation, Link } from 'react-router-dom';
-import { Bell, Search, Sparkles, Wifi, WifiOff, Moon, Sun } from 'lucide-react';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
+import { Bell, Search, Sparkles, Wifi, WifiOff, Moon, Sun, LogOut } from 'lucide-react';
+import { supabase } from '../supabaseClient';
+import toast from 'react-hot-toast';
 
 const pageTitles = {
   '/': 'Dashboard',
@@ -23,6 +25,7 @@ const pageDescriptions = {
 
 export default function Header() {
   const location = useLocation();
+  const navigate = useNavigate();
   const title = pageTitles[location.pathname] || 'FlowReach AI';
   const [online, setOnline] = useState(true);
   const [dark, setDark] = useState(() => {
@@ -100,6 +103,14 @@ export default function Header() {
         <Link to="/profile" className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-xl flex items-center justify-center shadow-md shadow-indigo-200/50 cursor-pointer hover:shadow-lg hover:shadow-indigo-300/50 transition-all" title="Profile">
           <span className="text-white text-sm font-bold">H</span>
         </Link>
+
+        <button
+          onClick={async () => { await supabase.auth.signOut(); toast.success('Signed out'); navigate('/'); }}
+          className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition-all duration-200"
+          title="Sign out"
+        >
+          <LogOut className="w-5 h-5" />
+        </button>
       </div>
     </header>
   );

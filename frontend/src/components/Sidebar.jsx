@@ -1,7 +1,9 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Home, MessageSquare, Workflow, Users, Settings, Bell, CircleUser, Radio, Zap, Sparkles, FileText, Target, FlaskConical, MailCheck, Repeat, Webhook, Search, BarChart3, Building, CalendarDays, UsersRound } from 'lucide-react';
+import { Home, MessageSquare, Workflow, Users, Settings, Bell, CircleUser, Radio, Zap, Sparkles, FileText, Target, FlaskConical, MailCheck, Repeat, Webhook, Search, BarChart3, Building, CalendarDays, UsersRound, LogOut } from 'lucide-react';
+import { supabase } from '../supabaseClient';
+import toast from 'react-hot-toast';
 
 const navItems = [
   { section: 'Overview', items: [
@@ -39,6 +41,13 @@ const navItems = [
 
 export default function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    toast.success('Signed out successfully');
+    navigate('/');
+  };
 
   return (
     <aside className="w-[260px] bg-sidebar border-r border-sidebar-border h-full flex flex-col font-sans transition-all duration-300">
@@ -108,6 +117,15 @@ export default function Sidebar() {
                <Bell size={16} className="hover:text-sidebar-foreground cursor-pointer transition-colors" />
             </div>
          </Link>
+         <button
+           onClick={handleSignOut}
+           className="flex items-center gap-3 w-full px-2 py-2 mt-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 group"
+         >
+           <div className="w-9 h-9 rounded-full bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex items-center justify-center group-hover:border-red-400 transition-colors">
+             <LogOut size={16} />
+           </div>
+           <span className="text-sm font-semibold group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">Sign Out</span>
+         </button>
       </div>
     </aside>
   );
