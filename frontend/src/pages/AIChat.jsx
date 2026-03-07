@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Send, Bot, User, Sparkles, Loader2, Wand2, GitBranch,
   Copy, Check, RefreshCw, Trash2, ChevronRight, Mail, Building2,
-  Target, Pen, MessageSquare, Hash, Phone, Users, Zap,
+  Target, Pen, MessageSquare, Hash, Users, Zap,
   Search, Download, CheckSquare, Square, Plus, MessageCircle
 } from 'lucide-react';
 import {
@@ -326,7 +326,6 @@ export default function AIChat() {
     industry: '', painPoints: '', callToAction: '',
     tone: 'professional', messageType: 'outreach_email', language: 'English',
     prompt: 'Write a personalized email to {{name}} at {{company}}.', maxLength: 200,
-    recipientPhone: '', recipientWhatsApp: '', recipientTelegram: '', recipientDiscord: '', recipientSlack: '',
   });
   const [generatedMsg, setGeneratedMsg] = useState(null);
   const [generating, setGenerating] = useState(false);
@@ -604,12 +603,6 @@ export default function AIChat() {
         },
         recipient: {
           email: genForm.recipientEmail,
-          phone: genForm.recipientPhone || '',
-          whatsapp: genForm.recipientWhatsApp || genForm.recipientPhone || '',
-          telegram: genForm.recipientTelegram || '',
-          chatId: genForm.recipientTelegram || '',
-          discordWebhook: genForm.recipientDiscord || '',
-          slackWebhook: genForm.recipientSlack || '',
           leadId: null,
         },
       });
@@ -791,44 +784,7 @@ export default function AIChat() {
                 </div>
               </div>
 
-              {/* Channel Addresses (shown for selected channels) */}
-              {(selectedChannels.includes('whatsapp') || selectedChannels.includes('telegram') || selectedChannels.includes('discord') || selectedChannels.includes('slack')) && (
-                <div className="p-4 bg-emerald-50/60 rounded-xl border border-emerald-100 space-y-3">
-                  <h4 className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 uppercase tracking-wide flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5" /> Channel Addresses
-                  </h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    {(selectedChannels.includes('email') || selectedChannels.includes('whatsapp')) && (
-                      <div>
-                        <label htmlFor="gen-recipientPhone" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Phone / WhatsApp</label>
-                        <input id="gen-recipientPhone" type="text" value={genForm.recipientPhone} onChange={(e) => setGenForm(f => ({ ...f, recipientPhone: e.target.value }))}
-                          placeholder="+1234567890" className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
-                      </div>
-                    )}
-                    {selectedChannels.includes('telegram') && (
-                      <div>
-                        <label htmlFor="gen-recipientTelegram" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Telegram Chat ID</label>
-                        <input id="gen-recipientTelegram" type="text" value={genForm.recipientTelegram} onChange={(e) => setGenForm(f => ({ ...f, recipientTelegram: e.target.value }))}
-                          placeholder="e.g. 123456789" className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
-                      </div>
-                    )}
-                    {selectedChannels.includes('discord') && (
-                      <div>
-                        <label htmlFor="gen-recipientDiscord" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Discord Webhook URL</label>
-                        <input id="gen-recipientDiscord" type="text" value={genForm.recipientDiscord} onChange={(e) => setGenForm(f => ({ ...f, recipientDiscord: e.target.value }))}
-                          placeholder="https://discord.com/api/webhooks/..." className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
-                      </div>
-                    )}
-                    {selectedChannels.includes('slack') && (
-                      <div>
-                        <label htmlFor="gen-recipientSlack" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Slack Webhook URL</label>
-                        <input id="gen-recipientSlack" type="text" value={genForm.recipientSlack} onChange={(e) => setGenForm(f => ({ ...f, recipientSlack: e.target.value }))}
-                          placeholder="https://hooks.slack.com/services/..." className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+              {/* Channel Addresses removed — all channels use backend .env config */}
               </>
               )}
 

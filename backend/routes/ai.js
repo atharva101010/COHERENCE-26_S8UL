@@ -426,10 +426,51 @@ async function handleEmailDirect(message, recipient) {
 
 async function handleWhatsAppDirect(message, recipient) {
   const entry = { channel: 'whatsapp', status: 'pending', detail: '' };
+  const toPhone = recipient?.phone || recipient?.whatsapp;
+
+  // Try Twilio WhatsApp first (configured in .env)
+  const twilioSid = process.env.TWILIO_ACCOUNT_SID;
+  const twilioAuth = process.env.TWILIO_AUTH_TOKEN;
+  const twilioFrom = process.env.TWILIO_WHATSAPP_NUMBER;
+
+  if (twilioSid && twilioAuth && twilioFrom && toPhone) {
+    try {
+      const toNum = toPhone.startsWith('whatsapp:') ? toPhone : `whatsapp:${toPhone.replace(/[^\d+]/g, '')}`;
+      const params = new URLSearchParams();
+      params.append('From', twilioFrom);
+      params.append('To', toNum);
+      params.append('Body', message.body);
+      const resp = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Basic ' + Buffer.from(`${twilioSid}:${twilioAuth}`).toString('base64'),
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: params.toString(),
+      });
+      const data = await resp.json();
+      if (resp.ok || data.sid) {
+        entry.status = 'sent';
+        entry.detail = `WhatsApp sent via Twilio (SID: ${data.sid})`;
+      } else {
+        entry.status = 'failed';
+        entry.detail = data.message || JSON.stringify(data);
+      }
+      return entry;
+    } catch (err) {
+      entry.status = 'failed';
+      entry.detail = `Twilio WhatsApp error: ${err.message}`;
+      return entry;
+    }
+  }
+
+  // Fallback: Meta WhatsApp Business API
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  const toPhone = recipient?.phone || recipient?.whatsapp;
-  if (!token || !phoneNumberId) { entry.status = 'logged'; entry.detail = 'WhatsApp not configured — logged only'; return entry; }
+  if (!token || !phoneNumberId) {
+    if (!toPhone) { entry.status = 'skipped'; entry.detail = 'No phone number and WhatsApp not configured'; return entry; }
+    entry.status = 'logged'; entry.detail = 'WhatsApp not configured — logged only'; return entry;
+  }
   if (!toPhone) { entry.status = 'skipped'; entry.detail = 'No phone number'; return entry; }
 
   const resp = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
@@ -450,7 +491,7 @@ async function handleWhatsAppDirect(message, recipient) {
 async function handleTelegramDirect(message, recipient) {
   const entry = { channel: 'telegram', status: 'pending', detail: '' };
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = recipient?.telegram || recipient?.chatId;
+  const chatId = recipient?.telegram || recipient?.chatId || process.env.TELEGRAM_CHAT_ID;
   if (!botToken) { entry.status = 'logged'; entry.detail = 'Telegram bot not configured — logged only'; return entry; }
   if (!chatId) { entry.status = 'skipped'; entry.detail = 'No chat ID'; return entry; }
 
