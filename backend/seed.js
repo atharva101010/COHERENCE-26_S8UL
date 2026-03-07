@@ -170,12 +170,62 @@ async function seedBlacklist() {
   else console.log(`  ✓ Seeded ${blacklistEntries.length} blacklist entries`);
 }
 
+async function seedFollowUpSequences() {
+  const sequences = [
+    {
+      name: 'Cold Outreach Follow-Up',
+      trigger_condition: 'no_reply',
+      max_attempts: 3,
+      status: 'active',
+      enrolled_count: 12,
+      completed_count: 5,
+      steps: JSON.stringify([
+        { delay_hours: 48, action: 'send_email', subject: 'Quick follow-up — {{company}}', body: 'Hi {{name}},\n\nI reached out a couple of days ago about how we can help {{company}} streamline your outreach. I know things get busy, so I wanted to bump this to the top of your inbox.\n\nWould you have 15 minutes this week for a quick call?\n\nBest,\nFlowReach AI Team' },
+        { delay_hours: 96, action: 'send_email', subject: 'Still interested? One more thing…', body: 'Hi {{name}},\n\nI wanted to share a quick case study — one of our clients in a similar space saw a 3x improvement in reply rates after switching to automated, AI-personalized outreach.\n\nHappy to walk you through how it works. Would Thursday or Friday work?\n\nCheers,\nFlowReach AI Team' },
+        { delay_hours: 168, action: 'send_email', subject: 'Last check-in from FlowReach', body: 'Hi {{name}},\n\nI don\'t want to be a bother — this will be my last follow-up. If the timing isn\'t right, no worries at all.\n\nBut if you\'re still exploring ways to automate outreach at {{company}}, I\'d love to help whenever you\'re ready.\n\nWishing you the best,\nFlowReach AI Team' },
+      ]),
+    },
+    {
+      name: 'Post-Demo Nurture Sequence',
+      trigger_condition: 'no_reply',
+      max_attempts: 3,
+      status: 'active',
+      enrolled_count: 8,
+      completed_count: 3,
+      steps: JSON.stringify([
+        { delay_hours: 24, action: 'send_email', subject: 'Thanks for the demo, {{name}}!', body: 'Hi {{name}},\n\nGreat chatting with you today! As promised, here\'s a quick recap of what we covered:\n\n• AI-powered email personalization\n• Multi-channel outreach (Email, Telegram, WhatsApp, Slack)\n• Real-time workflow execution with live monitoring\n\nLet me know if you have any questions or want to explore a specific feature deeper.\n\nBest,\nFlowReach AI Team' },
+        { delay_hours: 72, action: 'send_email', subject: 'Have you had a chance to think about it?', body: 'Hi {{name}},\n\nJust checking in after our demo. Our team at {{company}} could start seeing results within the first week of setup.\n\nWe also offer a free pilot program — would that be helpful for your evaluation?\n\nLooking forward to hearing from you,\nFlowReach AI Team' },
+        { delay_hours: 144, action: 'send_email', subject: 'Special offer for {{company}}', body: 'Hi {{name}},\n\nI wanted to reach out one last time with something special. We\'re offering an extended free trial for teams who sign up this month.\n\nIf you\'re still evaluating outreach tools, this could be a great opportunity to test FlowReach AI risk-free.\n\nLet me know!\nFlowReach AI Team' },
+      ]),
+    },
+    {
+      name: 'Re-engagement Campaign',
+      trigger_condition: 'no_open',
+      max_attempts: 2,
+      status: 'active',
+      enrolled_count: 20,
+      completed_count: 7,
+      steps: JSON.stringify([
+        { delay_hours: 72, action: 'send_email', subject: '{{name}}, we miss you at {{company}}!', body: 'Hi {{name}},\n\nIt\'s been a while since we last connected. I wanted to share some exciting updates:\n\n• New AI-powered workflow templates\n• Telegram & WhatsApp integrations\n• Advanced lead scoring with enrichment\n\nWould love to show you what\'s new — are you free for a quick 10-minute catch-up?\n\nBest regards,\nFlowReach AI Team' },
+        { delay_hours: 168, action: 'send_email', subject: 'A fresh start with FlowReach AI?', body: 'Hi {{name}},\n\nWe\'ve made significant improvements since we last spoke, and I think {{company}} could really benefit from what we\'ve built.\n\nNo pressure — just reply "interested" and I\'ll send over the details.\n\nCheers,\nFlowReach AI Team' },
+      ]),
+    },
+  ];
+
+  // Delete old seed sequences, then insert new ones
+  await supabase.from('follow_up_sequences').delete().in('name', sequences.map(s => s.name));
+  const { error } = await supabase.from('follow_up_sequences').insert(sequences);
+  if (error) console.error('  ❌ Follow-up sequences error:', error.message);
+  else console.log(`  ✓ Seeded ${sequences.length} follow-up sequence templates`);
+}
+
 export async function seed() {
   console.log('🌱 Seeding FlowReach AI demo data...\n');
   await seedLeads();
   await seedExecutionsAndMessages();
   await seedDailyCounts();
   await seedBlacklist();
+  await seedFollowUpSequences();
   console.log('\n✅ Seeding complete! Dashboard should now show real chart data.');
 }
 

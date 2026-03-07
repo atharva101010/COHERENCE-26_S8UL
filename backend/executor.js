@@ -302,6 +302,23 @@ export class WorkflowExecutor {
     // Send email via nodemailer
     try {
       const transporter = await this.getEmailTransporter();
+
+      // Verify SMTP connection before sending
+      try {
+        await transporter.verify();
+      } catch (verifyErr) {
+        this.log('error', `SMTP connection failed: ${verifyErr.message}. Check SMTP_HOST, SMTP_USER, and SMTP_PASS in .env`);
+        await supabase.from('messages').insert({
+          lead_id: this.lead.id,
+          execution_id: this.executionId,
+          type: 'email',
+          subject: finalSubject,
+          body: finalBody,
+          status: 'failed',
+        });
+        return;
+      }
+
       const mailOptions = {
         from: `"${senderName}" <${process.env.SMTP_FROM || process.env.SMTP_USER || 'flowreach@example.com'}>`,
         to: this.lead.email,
@@ -358,6 +375,8 @@ export class WorkflowExecutor {
         port,
         secure: port === 465,
         auth: { user, pass },
+        tls: { rejectUnauthorized: false },
+        ...(host.includes('gmail') ? { service: 'gmail' } : {}),
       });
     }
 
@@ -377,6 +396,7 @@ export class WorkflowExecutor {
           port: Number.parseInt(config.port || '587', 10),
           secure: Number.parseInt(config.port || '587', 10) === 465,
           auth: { user: config.user, pass: config.pass },
+          tls: { rejectUnauthorized: false },
         });
       }
     }
@@ -745,7 +765,7 @@ export class WorkflowExecutor {
   async handleTelegram(node) {
     const { chatId, tgMessage } = node.data || {};
     const filledMsg = replaceVariables(tgMessage || 'Hi {{name}}, message from FlowReach AI.', this.context.lead);
-    const targetChat = replaceVariables(chatId || '', this.context.lead) || 'N/A';
+    const targetChat = replaceVariables(chatId || '', this.context.lead) || process.env.TELEGRAM_CHAT_ID || 'N/A';
 
     this.log('info', `Telegram: Sending to chat ${targetChat}: "${filledMsg.substring(0, 100)}..."`);
 
