@@ -3,35 +3,79 @@ import supabase from '../db.js';
 
 const router = Router();
 
+// Default profile object
+const DEFAULT_PROFILE = {
+  id: null,
+  full_name: 'User',
+  email: '',
+  phone: '',
+  company: '',
+  job_title: '',
+  bio: '',
+  avatar_url: '',
+  timezone: 'UTC',
+  plan: 'Free',
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+};
+
+// Try to ensure profiles table exists
+async function ensureProfilesTable() {
+  const { error } = await supabase.from('profiles').select('id').limit(1);
+  if (error && error.message.includes('profiles')) {
+    // Table doesn't exist — try creating it via raw SQL
+    const { error: rpcError } = await supabase.rpc('exec_sql', {
+      query: `CREATE TABLE IF NOT EXISTS profiles (
+        id SERIAL PRIMARY KEY,
+        full_name TEXT NOT NULL DEFAULT 'User',
+        email TEXT DEFAULT '',
+        phone TEXT DEFAULT '',
+        company TEXT DEFAULT '',
+        job_title TEXT DEFAULT '',
+        bio TEXT DEFAULT '',
+        avatar_url TEXT DEFAULT '',
+        timezone TEXT DEFAULT 'UTC',
+        plan TEXT DEFAULT 'Free',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );`
+    });
+    if (rpcError) {
+      return false;
+    }
+    return true;
+  }
+  return !error;
+}
+
+let profilesTableReady = null;
+
 // GET /api/profile — Get current profile (singleton row)
 router.get('/', async (req, res) => {
   try {
+    if (profilesTableReady === null) {
+      profilesTableReady = await ensureProfilesTable();
+    }
+    if (!profilesTableReady) {
+      return res.json(DEFAULT_PROFILE);
+    }
+
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .limit(1)
       .single();
 
-    if (error && error.code === 'PGRST116') {
-      // No profile yet — return defaults
-      return res.json({
-        id: null,
-        full_name: 'User',
-        email: '',
-        phone: '',
-        company: '',
-        job_title: '',
-        bio: '',
-        avatar_url: '',
-        timezone: 'UTC',
-        plan: 'Free',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      });
+    if (error && (error.code === 'PGRST116' || error.message.includes('profiles'))) {
+      return res.json(DEFAULT_PROFILE);
     }
     if (error) throw error;
     res.json(data);
   } catch (err) {
+    // If table doesn't exist, return default gracefully
+    if (err.message && err.message.includes('profiles')) {
+      return res.json(DEFAULT_PROFILE);
+    }
     res.status(500).json({ error: err.message });
   }
 });
@@ -39,6 +83,13 @@ router.get('/', async (req, res) => {
 // PUT /api/profile — Update or create profile
 router.put('/', async (req, res) => {
   try {
+    if (profilesTableReady === null) {
+      profilesTableReady = await ensureProfilesTable();
+    }
+    if (!profilesTableReady) {
+      return res.json({ ...DEFAULT_PROFILE, ...req.body, updated_at: new Date().toISOString() });
+    }
+
     const { full_name, email, phone, company, job_title, bio, avatar_url, timezone } = req.body;
     const updates = {
       full_name: full_name || 'User',
@@ -83,6 +134,9 @@ router.put('/', async (req, res) => {
 
     res.json(result);
   } catch (err) {
+    if (err.message && err.message.includes('profiles')) {
+      return res.json({ ...DEFAULT_PROFILE, ...req.body, updated_at: new Date().toISOString() });
+    }
     res.status(500).json({ error: err.message });
   }
 });
@@ -117,17 +171,19 @@ router.post('/avatar', async (req, res) => {
     const avatarUrl = urlData.publicUrl;
 
     // Update profile with new avatar URL
-    const { data: existing } = await supabase
-      .from('profiles')
-      .select('id')
-      .limit(1)
-      .single();
-
-    if (existing?.id) {
-      await supabase
+    if (profilesTableReady !== false) {
+      const { data: existing } = await supabase
         .from('profiles')
-        .update({ avatar_url: avatarUrl, updated_at: new Date().toISOString() })
-        .eq('id', existing.id);
+        .select('id')
+        .limit(1)
+        .single();
+
+      if (existing?.id) {
+        await supabase
+          .from('profiles')
+          .update({ avatar_url: avatarUrl, updated_at: new Date().toISOString() })
+          .eq('id', existing.id);
+      }
     }
 
     res.json({ avatar_url: avatarUrl });

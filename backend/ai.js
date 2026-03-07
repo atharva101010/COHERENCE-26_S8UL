@@ -1,5 +1,6 @@
 import Groq from 'groq-sdk';
 import supabase from './db.js';
+import { safeJsonParse } from './utils.js';
 
 // ──────────────────────────────────────────────
 // Groq client (lazy-initialized with credential)
@@ -16,7 +17,7 @@ async function getGroqClient(credentialId) {
       .single();
 
     if (!error && cred) {
-      const config = typeof cred.config === 'string' ? JSON.parse(cred.config) : (cred.config || {});
+      const config = safeJsonParse(cred.config, {});
       apiKey = config.apiKey || config.api_key || apiKey;
     }
   }
@@ -136,7 +137,7 @@ Return ONLY a JSON object with "subject" and "body" fields — no markdown, no c
   let parsed;
   try {
     const jsonMatch = /\{[\s\S]*\}/.exec(raw);
-    parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { subject: 'Follow up', body: raw };
+    parsed = jsonMatch ? safeJsonParse(jsonMatch[0], { subject: 'Follow up', body: raw }) : { subject: 'Follow up', body: raw };
   } catch {
     parsed = { subject: 'Follow up', body: raw };
   }

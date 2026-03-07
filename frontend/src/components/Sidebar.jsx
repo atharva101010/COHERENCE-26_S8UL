@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Home, MessageSquare, Workflow, Users, Settings, Bell, CircleUser, Radio, Zap, Sparkles } from 'lucide-react';
+import { Home, MessageSquare, Workflow, Users, Settings, Bell, CircleUser, Radio, Zap, Sparkles, FileText, Target, FlaskConical, MailCheck, Repeat, Webhook, Search, BarChart3, Building, CalendarDays, UsersRound } from 'lucide-react';
 
 const navItems = [
   { section: 'Overview', items: [
@@ -10,16 +10,31 @@ const navItems = [
   ]},
   { section: 'AI', items: [
     { name: 'AI Assistant', icon: Sparkles, path: '/ai', badge: 'NEW' },
+    { name: 'Lead Scoring', icon: Target, path: '/lead-scoring', badge: null },
   ]},
   { section: 'Tools', items: [
     { name: 'Messages', icon: MessageSquare, path: '/messages', badge: null },
     { name: 'Workflows', icon: Workflow, path: '/workflows', badge: null },
     { name: 'Leads', icon: Users, path: '/leads', badge: null },
     { name: 'Channels', icon: Radio, path: '/channels', badge: null },
+    { name: 'Templates', icon: FileText, path: '/templates', badge: null },
+    { name: 'Follow-Ups', icon: Repeat, path: '/follow-ups', badge: null },
   ]},
-  { section: 'Metrics', items: [
+  { section: 'Analytics', items: [
+    { name: 'Email Tracking', icon: MailCheck, path: '/email-tracking', badge: null },
+    { name: 'A/B Testing', icon: FlaskConical, path: '/ab-testing', badge: null },
+    { name: 'Export', icon: BarChart3, path: '/analytics-export', badge: null },
+  ]},
+  { section: 'Integrations', items: [
+    { name: 'CRM', icon: Building, path: '/crm', badge: null },
+    { name: 'Calendar', icon: CalendarDays, path: '/calendar', badge: null },
+    { name: 'Webhooks', icon: Webhook, path: '/webhooks', badge: null },
+    { name: 'Enrichment', icon: Search, path: '/lead-enrichment', badge: null },
+  ]},
+  { section: 'Admin', items: [
+    { name: 'Team', icon: UsersRound, path: '/team', badge: null },
     { name: 'Settings', icon: Settings, path: '/settings', badge: null },
-  ]}
+  ]},
 ];
 
 export default function Sidebar() {

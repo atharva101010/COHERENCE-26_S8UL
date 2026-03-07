@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import supabase from '../db.js';
 import { generateMessage, previewMessages } from '../ai.js';
+import { safeJsonParse } from '../utils.js';
 import Groq from 'groq-sdk';
 
 const router = Router();
@@ -39,11 +40,10 @@ router.post('/generate', async (req, res) => {
         body: result.body,
         status: 'draft',
       });
-    if (insertError) console.warn('Failed to store message:', insertError.message);
+    if (insertError) { /* message storage failed silently */ }
 
     res.json(result);
   } catch (err) {
-    console.error('AI generate error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -91,23 +91,35 @@ router.post('/preview', async (req, res) => {
     const results = await previewMessages({ leads, prompt, tone, maxLength, credentialId, model, companyName, senderName, industry, painPoints, callToAction, signature, language, messageType });
     res.json({ previews: results, source: results[0]?.source || 'mock' });
   } catch (err) {
-    console.error('AI preview error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST /api/ai/chat — Direct AI chat conversation
+// POST /api/ai/chat — Direct AI chat conversation (with history support)
 router.post('/chat', async (req, res) => {
   try {
-    const { message, context, model } = req.body;
+    const { message, context, model, history, conversationId } = req.body;
     if (!message) return res.status(400).json({ error: 'Message is required' });
 
     const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) {
-      return res.json({
-        reply: `I'd be happy to help! You asked: "${message}"\n\nHere are some things I can help you with:\n• Generate personalized outreach emails\n• Create workflow automation strategies\n• Analyze lead data and suggest approaches\n• Write follow-up sequences\n\n(Note: Set GROQ_API_KEY for full AI responses)`,
-        source: 'mock',
+
+    // Store user message if conversationId provided
+    let convId = conversationId;
+    if (convId) {
+      await supabase.from('ai_chat_messages').insert({
+        conversation_id: convId,
+        role: 'user',
+        content: message,
       });
+      await supabase.from('ai_conversations').update({ updated_at: new Date().toISOString() }).eq('id', convId);
+    }
+
+    if (!apiKey) {
+      const reply = `I'd be happy to help! You asked: "${message}"\n\nHere are some things I can help you with:\n• Generate personalized outreach emails\n• Create workflow automation strategies\n• Analyze lead data and suggest approaches\n• Write follow-up sequences\n\n(Note: Set GROQ_API_KEY for full AI responses)`;
+      if (convId) {
+        await supabase.from('ai_chat_messages').insert({ conversation_id: convId, role: 'assistant', content: reply, source: 'mock' });
+      }
+      return res.json({ reply, source: 'mock' });
     }
 
     const groq = new Groq({ apiKey });
@@ -122,20 +134,114 @@ ${context ? `Context: ${context}` : ''}
 
 Be helpful, concise, and actionable. If the user asks for emails, provide actual email content. If they ask about workflows, describe step-by-step automation flows.`;
 
+    const chatMessages = [{ role: 'system', content: systemPrompt }];
+
+    // Include conversation history for context
+    if (history && Array.isArray(history)) {
+      for (const h of history.slice(-20)) {
+        if (h.role === 'user' || h.role === 'assistant') {
+          chatMessages.push({ role: h.role, content: h.content });
+        }
+      }
+    }
+
+    chatMessages.push({ role: 'user', content: message });
+
     const completion = await groq.chat.completions.create({
       model: model || 'llama-3.3-70b-versatile',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: message },
-      ],
+      messages: chatMessages,
       temperature: 0.7,
       max_tokens: 2048,
     });
 
     const reply = completion.choices[0]?.message?.content || 'Sorry, I could not generate a response.';
+
+    // Store assistant reply
+    if (convId) {
+      await supabase.from('ai_chat_messages').insert({ conversation_id: convId, role: 'assistant', content: reply, source: 'groq' });
+    }
+
     res.json({ reply, source: 'groq', model: model || 'llama-3.3-70b-versatile' });
   } catch (err) {
-    console.error('AI chat error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/ai/conversations — List all conversations
+router.get('/conversations', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('ai_conversations')
+      .select('*')
+      .order('updated_at', { ascending: false })
+      .limit(50);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/ai/conversations — Create a new conversation
+router.post('/conversations', async (req, res) => {
+  try {
+    const { title } = req.body;
+    const { data, error } = await supabase
+      .from('ai_conversations')
+      .insert({ title: title || 'New Chat' })
+      .select()
+      .single();
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/ai/conversations/:id/messages — Get messages for a conversation
+router.get('/conversations/:id/messages', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await supabase
+      .from('ai_chat_messages')
+      .select('*')
+      .eq('conversation_id', Number(id))
+      .order('created_at', { ascending: true });
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/ai/conversations/:id — Update conversation title
+router.put('/conversations/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title } = req.body;
+    if (!title) return res.status(400).json({ error: 'Title is required' });
+    const { data, error } = await supabase
+      .from('ai_conversations')
+      .update({ title, updated_at: new Date().toISOString() })
+      .eq('id', Number(id))
+      .select()
+      .single();
+    if (error) return res.status(500).json({ error: error.message });
+    if (!data) return res.status(404).json({ error: 'Conversation not found' });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/ai/conversations/:id — Delete a conversation and its messages
+router.delete('/conversations/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase.from('ai_conversations').delete().eq('id', Number(id));
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ deleted: true, id: Number(id) });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
@@ -197,7 +303,7 @@ No markdown, no code fences, no explanation.`;
       let parsed;
       try {
         const jsonMatch = /\{[\s\S]*\}/.exec(raw);
-        parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+        parsed = jsonMatch ? safeJsonParse(jsonMatch[0], null) : null;
       } catch {
         parsed = null;
       }
@@ -246,13 +352,12 @@ No markdown, no code fences, no explanation.`;
     res.json({
       workflow: {
         ...data,
-        nodes: typeof data.nodes === 'string' ? JSON.parse(data.nodes) : data.nodes,
-        edges: typeof data.edges === 'string' ? JSON.parse(data.edges) : data.edges,
+        nodes: typeof data.nodes === 'string' ? safeJsonParse(data.nodes, []) : data.nodes,
+        edges: typeof data.edges === 'string' ? safeJsonParse(data.edges, []) : data.edges,
       },
       source: apiKey ? 'groq' : 'mock',
     });
   } catch (err) {
-    console.error('AI workflow creation error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -497,7 +602,6 @@ router.post('/send', async (req, res) => {
 
     res.json({ results });
   } catch (err) {
-    console.error('AI send error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -592,7 +696,6 @@ router.post('/bulk-send', async (req, res) => {
 
     res.json({ results, summary });
   } catch (err) {
-    console.error('Bulk send error:', err);
     res.status(500).json({ error: err.message });
   }
 });

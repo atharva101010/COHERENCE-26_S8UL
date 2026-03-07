@@ -15,8 +15,30 @@ import settingsRouter from './routes/settings.js';
 import messagesRouter from './routes/messages.js';
 import channelsRouter from './routes/channels.js';
 import profileRouter from './routes/profile.js';
+import templatesRouter from './routes/templates.js';
+import featuresRouter from './routes/features.js';
 
 dotenv.config();
+
+// Validate required env vars at startup
+const requiredEnvVars = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'];
+const missingVars = requiredEnvVars.filter(v => !process.env[v]);
+if (missingVars.length > 0) {
+  console.error(`Missing required environment variables: ${missingVars.join(', ')}`);
+  process.exit(1);
+}
+
+// Log optional service configuration status
+const optionalServices = [
+  { name: 'Groq AI', key: 'GROQ_API_KEY' },
+  { name: 'SMTP Email', key: 'SMTP_HOST' },
+  { name: 'WhatsApp', key: 'WHATSAPP_ACCESS_TOKEN' },
+  { name: 'Telegram', key: 'TELEGRAM_BOT_TOKEN' },
+  { name: 'Slack', key: 'SLACK_WEBHOOK_URL' },
+  { name: 'Discord', key: 'DISCORD_WEBHOOK_URL' },
+];
+const configuredServices = optionalServices.filter(s => process.env[s.key]).map(s => s.name);
+const unconfiguredServices = optionalServices.filter(s => !process.env[s.key]).map(s => s.name);
 
 const app = express();
 const httpServer = createServer(app);
@@ -55,6 +77,8 @@ app.use('/api/settings', settingsRouter);
 app.use('/api/messages', messagesRouter);
 app.use('/api/channels', channelsRouter);
 app.use('/api/profile', profileRouter);
+app.use('/api/templates', templatesRouter);
+app.use('/api/features', featuresRouter);
 
 // POST /api/seed/reset — Reset demo data by re-running seed
 app.post('/api/seed/reset', async (req, res) => {
@@ -71,22 +95,28 @@ app.post('/api/seed/reset', async (req, res) => {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const frontendDist = path.join(__dirname, '..', 'frontend', 'dist');
 
-app.use(express.static(frontendDist));
+app.use(express.static(frontendDist, {
+  maxAge: '1d',
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
+  }
+}));
 app.get('*', (req, res) => {
   res.sendFile(path.join(frontendDist, 'index.html'));
 });
 
 // Socket.io connection
 io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
-  socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
-  });
+  socket.on('disconnect', () => {});
 });
 
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
   console.log(`FlowReach AI backend running on port ${PORT}`);
+  if (configuredServices.length > 0) console.log(`  Services enabled: ${configuredServices.join(', ')}`);
+  if (unconfiguredServices.length > 0) console.log(`  Services not configured: ${unconfiguredServices.join(', ')} (mock/fallback mode)`);
 });
 
 export { app, io };

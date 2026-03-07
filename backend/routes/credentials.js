@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import supabase from '../db.js';
+import { safeJsonParse } from '../utils.js';
 
 const router = Router();
 
@@ -14,7 +15,7 @@ router.get('/', async (req, res) => {
     if (error) return res.status(500).json({ error: error.message });
 
     const credentials = (rows || []).map(c => {
-      const config = typeof c.config === 'string' ? JSON.parse(c.config) : (c.config || {});
+      const config = safeJsonParse(c.config, {});
       const masked = {};
       for (const [key, val] of Object.entries(config)) {
         if (typeof val === 'string' && val.length > 8) {
@@ -42,7 +43,7 @@ router.get('/:id', async (req, res) => {
 
     if (error || !row) return res.status(404).json({ error: 'Credential not found' });
 
-    const config = typeof row.config === 'string' ? JSON.parse(row.config) : (row.config || {});
+    const config = safeJsonParse(row.config, {});
     res.json({ ...row, config });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -82,7 +83,7 @@ router.post('/', async (req, res) => {
 
     if (error) return res.status(500).json({ error: error.message });
 
-    const parsedConfig = typeof created.config === 'string' ? JSON.parse(created.config) : created.config;
+    const parsedConfig = safeJsonParse(created.config, {});
     res.status(201).json({ ...created, config: parsedConfig });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -103,7 +104,7 @@ router.put('/:id', async (req, res) => {
 
     if (fetchErr || !existing) return res.status(404).json({ error: 'Credential not found' });
 
-    const existingConfig = typeof existing.config === 'string' ? JSON.parse(existing.config) : (existing.config || {});
+    const existingConfig = safeJsonParse(existing.config, {});
     const newConfig = config ? { ...existingConfig, ...config } : existingConfig;
 
     const { data: updated, error } = await supabase
@@ -119,7 +120,7 @@ router.put('/:id', async (req, res) => {
 
     if (error) return res.status(500).json({ error: error.message });
 
-    const parsedConfig = typeof updated.config === 'string' ? JSON.parse(updated.config) : updated.config;
+    const parsedConfig = safeJsonParse(updated.config, {});
     res.json({ ...updated, config: parsedConfig });
   } catch (err) {
     res.status(500).json({ error: err.message });

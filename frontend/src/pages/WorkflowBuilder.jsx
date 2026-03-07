@@ -121,7 +121,7 @@ const paletteCategories = [
     name: 'Integrations',
     items: [
       { type: 'httpRequestNode', label: 'HTTP Request', icon: Globe, bgClass: 'bg-sky-500', hoverBorder: 'hover:border-sky-300', hoverBg: 'hover:bg-sky-50/50', description: 'Call external API' },
-      { type: 'codeNode', label: 'Code', icon: Code, bgClass: 'bg-zinc-700', hoverBorder: 'hover:border-zinc-400', hoverBg: 'hover:bg-zinc-50/50', description: 'Custom JS/Python' },
+      { type: 'codeNode', label: 'Code', icon: Code, bgClass: 'bg-zinc-700', hoverBorder: 'hover:border-zinc-400', hoverBg: 'hover:bg-zinc-50/50 dark:bg-zinc-800/50', description: 'Custom JS/Python' },
       { type: 'updateLeadNode', label: 'Update Lead', icon: UserCheck, bgClass: 'bg-teal-500', hoverBorder: 'hover:border-teal-300', hoverBg: 'hover:bg-teal-50/50', description: 'Change lead status' },
     ],
   },
@@ -338,27 +338,27 @@ export default function WorkflowBuilder() {
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col">
       {/* Top Bar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-white border-b border-zinc-200">
+      <div className="flex items-center justify-between px-4 py-2 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-700">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/workflows')}
-            className="p-2 hover:bg-zinc-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
           >
-            <ArrowLeft className="w-4 h-4 text-zinc-600" />
+            <ArrowLeft className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />
           </button>
           <div>
             <input
               type="text"
               value={workflowName}
               onChange={(e) => setWorkflowName(e.target.value)}
-              className="text-lg font-semibold text-zinc-900 bg-transparent border-none outline-none focus:ring-0 p-0"
+              className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 bg-transparent border-none outline-none focus:ring-0 p-0"
               placeholder="Workflow name..."
             />
             <input
               type="text"
               value={workflowDesc}
               onChange={(e) => setWorkflowDesc(e.target.value)}
-              className="block text-xs text-zinc-500 bg-transparent border-none outline-none focus:ring-0 p-0 w-64"
+              className="block text-xs text-zinc-500 dark:text-zinc-400 bg-transparent border-none outline-none focus:ring-0 p-0 w-64"
               placeholder="Add a description..."
             />
           </div>
@@ -367,7 +367,7 @@ export default function WorkflowBuilder() {
           <button
             onClick={deleteSelectedNode}
             disabled={!selectedNode}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-zinc-200 text-zinc-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-red-50 dark:bg-red-900/30 hover:text-red-600 dark:text-red-400 hover:border-red-200 dark:border-red-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             <Trash2 className="w-3.5 h-3.5" />
             Delete
@@ -416,11 +416,11 @@ export default function WorkflowBuilder() {
               style: { stroke: '#6366f1', strokeWidth: 2 },
               animated: true,
             }}
-            className="bg-zinc-50"
+            className="bg-zinc-50 dark:bg-zinc-800"
           >
-            <Controls className="!bg-white !border-zinc-200 !shadow-lg !rounded-lg" />
+            <Controls className="!bg-white dark:bg-zinc-900 !border-zinc-200 dark:border-zinc-700 !shadow-lg !rounded-lg" />
             <MiniMap
-              className="!bg-white !border-zinc-200 !shadow-lg !rounded-lg"
+              className="!bg-white dark:bg-zinc-900 !border-zinc-200 dark:border-zinc-700 !shadow-lg !rounded-lg"
               nodeColor={(n) => {
                 const colors = {
                   startNode: '#10b981', aiGenerateNode: '#8b5cf6', emailNode: '#3b82f6',
@@ -437,12 +437,12 @@ export default function WorkflowBuilder() {
             <Background variant="dots" gap={20} size={1} color="#d4d4d8" />
             {nodes.length === 0 && (
               <Panel position="top-center" className="!mt-24">
-                <div className="text-center p-6 bg-white/80 backdrop-blur-sm rounded-xl border border-zinc-200 shadow-lg">
-                  <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-                    <GitBranch className="w-6 h-6 text-indigo-600" />
+                <div className="text-center p-6 bg-white/80 backdrop-blur-sm rounded-xl border border-zinc-200 dark:border-zinc-700 shadow-lg">
+                  <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/40 rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <GitBranch className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
                   </div>
-                  <h3 className="text-lg font-semibold text-zinc-900">Build Your Workflow</h3>
-                  <p className="text-sm text-zinc-500 mt-1 max-w-xs">
+                  <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Build Your Workflow</h3>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1 max-w-xs">
                     Drag nodes from the palette on the left and connect them to create your automation workflow.
                   </p>
                 </div>
@@ -464,23 +464,23 @@ export default function WorkflowBuilder() {
       {/* Execute Workflow Modal */}
       {showExecuteModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-zinc-700">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center">
                   <Zap className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-zinc-900">Execute Workflow</h3>
-                  <p className="text-xs text-zinc-500">Select leads to run &quot;{workflowName}&quot; on</p>
+                  <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Execute Workflow</h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Select leads to run &quot;{workflowName}&quot; on</p>
                 </div>
               </div>
-              <button onClick={() => { setShowExecuteModal(false); setSelectedLeadIds([]); }} className="p-2 hover:bg-zinc-100 rounded-lg">
-                <X className="w-5 h-5 text-zinc-500" />
+              <button onClick={() => { setShowExecuteModal(false); setSelectedLeadIds([]); }} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg">
+                <X className="w-5 h-5 text-zinc-500 dark:text-zinc-400" />
               </button>
             </div>
 
-            <div className="px-6 py-3 border-b border-zinc-100">
+            <div className="px-6 py-3 border-b border-zinc-100 dark:border-zinc-800">
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
@@ -489,18 +489,18 @@ export default function WorkflowBuilder() {
                     value={leadSearch}
                     onChange={(e) => setLeadSearch(e.target.value)}
                     placeholder="Search leads..."
-                    className="w-full pl-9 pr-3 py-2 text-sm border border-zinc-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                    className="w-full pl-9 pr-3 py-2 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
                   />
                 </div>
-                <button onClick={selectAllLeads} className="px-3 py-2 text-xs font-medium text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
+                <button onClick={selectAllLeads} className="px-3 py-2 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:bg-emerald-900/30 rounded-lg transition-colors">
                   Select All
                 </button>
-                <button onClick={() => setSelectedLeadIds([])} className="px-3 py-2 text-xs font-medium text-zinc-500 hover:bg-zinc-100 rounded-lg transition-colors">
+                <button onClick={() => setSelectedLeadIds([])} className="px-3 py-2 text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors">
                   Clear
                 </button>
               </div>
               {selectedLeadIds.length > 0 && (
-                <p className="text-xs text-emerald-600 mt-2 font-medium">
+                <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 font-medium">
                   {selectedLeadIds.length} lead{selectedLeadIds.length > 1 ? 's' : ''} selected
                 </p>
               )}
@@ -519,7 +519,7 @@ export default function WorkflowBuilder() {
               ).length === 0 && (
                 <div className="text-center py-12">
                   <Users className="w-10 h-10 text-zinc-300 mx-auto mb-2" />
-                  <p className="text-sm text-zinc-500">No leads found</p>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">No leads found</p>
                   <p className="text-xs text-zinc-400 mt-1">Import leads first from the Leads page</p>
                 </div>
               )}
@@ -537,18 +537,18 @@ export default function WorkflowBuilder() {
                       className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
                         selectedLeadIds.includes(lead.id)
                           ? 'border-emerald-300 bg-emerald-50/50 ring-1 ring-emerald-200'
-                          : 'border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50'
+                          : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800'
                       }`}
                     >
                       <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
                         selectedLeadIds.includes(lead.id)
                           ? 'bg-emerald-500 border-emerald-500'
-                          : 'border-zinc-300'
+                          : 'border-zinc-300 dark:border-zinc-600'
                       }`}>
                         {selectedLeadIds.includes(lead.id) && <Check className="w-3 h-3 text-white" />}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-zinc-800 truncate">{lead.name}</p>
+                        <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate">{lead.name}</p>
                         <p className="text-xs text-zinc-400 truncate">{lead.email} {lead.company ? `· ${lead.company}` : ''}</p>
                       </div>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getLeadStatusClass(lead.status)}`}>
@@ -558,14 +558,14 @@ export default function WorkflowBuilder() {
                   ))}
             </div>
 
-            <div className="px-6 py-4 border-t border-zinc-200 flex items-center justify-between">
+            <div className="px-6 py-4 border-t border-zinc-200 dark:border-zinc-700 flex items-center justify-between">
               <p className="text-xs text-zinc-400">
                 {nodes.length} nodes · {edges.length} connections
               </p>
               <div className="flex gap-2">
                 <button
                   onClick={() => { setShowExecuteModal(false); setSelectedLeadIds([]); }}
-                  className="px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors"
+                  className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
@@ -590,10 +590,10 @@ export default function WorkflowBuilder() {
 }
 
 function getLeadStatusClass(status) {
-  if (status === 'new') return 'bg-blue-50 text-blue-600';
-  if (status === 'contacted') return 'bg-amber-50 text-amber-600';
-  if (status === 'converted') return 'bg-emerald-50 text-emerald-600';
-  return 'bg-zinc-100 text-zinc-500';
+  if (status === 'new') return 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400';
+  if (status === 'contacted') return 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400';
+  if (status === 'converted') return 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400';
+  return 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400';
 }
 
 function NodePalette({ onDragStart }) {
@@ -613,8 +613,8 @@ function NodePalette({ onDragStart }) {
     .filter((cat) => cat.items.length > 0);
 
   return (
-    <div className="w-60 bg-white border-r border-zinc-200 flex flex-col overflow-hidden">
-      <div className="p-3 border-b border-zinc-100">
+    <div className="w-60 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-700 flex flex-col overflow-hidden">
+      <div className="p-3 border-b border-zinc-100 dark:border-zinc-800">
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
           <input
@@ -622,7 +622,7 @@ function NodePalette({ onDragStart }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search nodes..."
-            className="w-full pl-8 pr-3 py-1.5 text-sm border border-zinc-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+            className="w-full pl-8 pr-3 py-1.5 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
           />
         </div>
       </div>
@@ -631,7 +631,7 @@ function NodePalette({ onDragStart }) {
           <div key={cat.name}>
             <button
               onClick={() => toggle(cat.name)}
-              className="flex items-center gap-1.5 w-full px-2 py-1.5 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider hover:text-zinc-700"
+              className="flex items-center gap-1.5 w-full px-2 py-1.5 text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider hover:text-zinc-700 dark:text-zinc-300"
             >
               {collapsed[cat.name] ? (
                 <ChevronRight className="w-3 h-3" />
@@ -650,13 +650,13 @@ function NodePalette({ onDragStart }) {
                       key={item.type}
                       draggable
                       onDragStart={(e) => onDragStart(e, item.type)}
-                      className={`flex items-center gap-2 p-2 rounded-lg border border-zinc-200 cursor-grab active:cursor-grabbing ${item.hoverBorder} ${item.hoverBg} transition-all group`}
+                      className={`flex items-center gap-2 p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 cursor-grab active:cursor-grabbing ${item.hoverBorder} ${item.hoverBg} transition-all group`}
                     >
                       <div className={`w-7 h-7 rounded-md ${item.bgClass} flex items-center justify-center flex-shrink-0`}>
                         <Icon className="w-3.5 h-3.5 text-white" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium text-zinc-800 leading-tight">{item.label}</div>
+                        <div className="text-sm font-medium text-zinc-800 dark:text-zinc-200 leading-tight">{item.label}</div>
                         <div className="text-[10px] text-zinc-400 truncate">{item.description}</div>
                       </div>
                       <GripVertical className="w-3 h-3 text-zinc-300 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />

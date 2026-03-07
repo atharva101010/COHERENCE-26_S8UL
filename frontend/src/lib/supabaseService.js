@@ -5,6 +5,7 @@
 // ============================================================
 
 import { supabase } from '../supabaseClient';
+import { safeJsonParse } from './utils';
 
 // ──────────────────────────────────────────────
 // LEADS
@@ -125,8 +126,8 @@ export async function fetchWorkflows() {
   if (error) throw error;
   return (data || []).map((w) => ({
     ...w,
-    nodes: typeof w.nodes === 'string' ? JSON.parse(w.nodes) : w.nodes || [],
-    edges: typeof w.edges === 'string' ? JSON.parse(w.edges) : w.edges || [],
+    nodes: typeof w.nodes === 'string' ? safeJsonParse(w.nodes, []) : w.nodes || [],
+    edges: typeof w.edges === 'string' ? safeJsonParse(w.edges, []) : w.edges || [],
     is_active: Boolean(w.is_active),
   }));
 }
@@ -140,8 +141,8 @@ export async function fetchWorkflowById(id) {
   if (error) throw error;
   return {
     ...data,
-    nodes: typeof data.nodes === 'string' ? JSON.parse(data.nodes) : data.nodes || [],
-    edges: typeof data.edges === 'string' ? JSON.parse(data.edges) : data.edges || [],
+    nodes: typeof data.nodes === 'string' ? safeJsonParse(data.nodes, []) : data.nodes || [],
+    edges: typeof data.edges === 'string' ? safeJsonParse(data.edges, []) : data.edges || [],
     is_active: Boolean(data.is_active),
   };
 }
@@ -160,8 +161,8 @@ export async function createWorkflow({ name, description, nodes, edges }) {
   if (error) throw error;
   return {
     ...data,
-    nodes: typeof data.nodes === 'string' ? JSON.parse(data.nodes) : data.nodes,
-    edges: typeof data.edges === 'string' ? JSON.parse(data.edges) : data.edges,
+    nodes: typeof data.nodes === 'string' ? safeJsonParse(data.nodes, []) : data.nodes,
+    edges: typeof data.edges === 'string' ? safeJsonParse(data.edges, []) : data.edges,
     is_active: Boolean(data.is_active),
   };
 }
@@ -183,8 +184,8 @@ export async function updateWorkflow(id, updates) {
   if (error) throw error;
   return {
     ...data,
-    nodes: typeof data.nodes === 'string' ? JSON.parse(data.nodes) : data.nodes,
-    edges: typeof data.edges === 'string' ? JSON.parse(data.edges) : data.edges,
+    nodes: typeof data.nodes === 'string' ? safeJsonParse(data.nodes, []) : data.nodes,
+    edges: typeof data.edges === 'string' ? safeJsonParse(data.edges, []) : data.edges,
     is_active: Boolean(data.is_active),
   };
 }
@@ -194,117 +195,22 @@ export async function deleteWorkflow(id) {
   if (error) throw error;
 }
 
-// Seed 5 default workflow templates
+// Seed workflow templates via the backend API (handles deduplication)
 export async function seedWorkflowTemplates() {
-  const templates = [
-    {
-      name: 'Cold Outreach Sequence',
-      description: 'Automated cold email sequence with AI-generated personalization and follow-ups',
-      nodes: JSON.stringify([
-        { id: 'start-1', type: 'startNode', position: { x: 250, y: 50 }, data: { label: 'Start', trigger: 'manual' } },
-        { id: 'ai-1', type: 'aiGenerateNode', position: { x: 250, y: 180 }, data: { label: 'Generate Cold Email', prompt: 'Write a personalized cold outreach email to {{name}} at {{company}}.', tone: 'professional', maxLength: 200 } },
-        { id: 'email-1', type: 'emailNode', position: { x: 250, y: 320 }, data: { label: 'Send Cold Email', subject: 'Quick question about {{company}}', fromName: 'FlowReach AI' } },
-        { id: 'delay-1', type: 'delayNode', position: { x: 250, y: 460 }, data: { label: 'Wait 3 Days', duration: 3, unit: 'days' } },
-        { id: 'condition-1', type: 'conditionNode', position: { x: 250, y: 600 }, data: { label: 'Replied?', field: 'status', operator: 'equals', value: 'replied' } },
-        { id: 'update-1', type: 'updateLeadNode', position: { x: 500, y: 740 }, data: { label: 'Mark Converted', status: 'converted' } },
-        { id: 'ai-2', type: 'aiGenerateNode', position: { x: 50, y: 740 }, data: { label: 'Generate Follow-up', prompt: 'Write a polite follow-up email to {{name}}.', tone: 'friendly', maxLength: 150 } },
-        { id: 'email-2', type: 'emailNode', position: { x: 50, y: 880 }, data: { label: 'Send Follow-up', subject: 'Following up — {{company}}', fromName: 'FlowReach AI' } },
-        { id: 'end-1', type: 'endNode', position: { x: 250, y: 1020 }, data: { label: 'End' } },
-      ]),
-      edges: JSON.stringify([
-        { id: 'e-start-ai1', source: 'start-1', target: 'ai-1' },
-        { id: 'e-ai1-email1', source: 'ai-1', target: 'email-1' },
-        { id: 'e-email1-delay1', source: 'email-1', target: 'delay-1' },
-        { id: 'e-delay1-cond1', source: 'delay-1', target: 'condition-1' },
-        { id: 'e-cond1-update1', source: 'condition-1', target: 'update-1', sourceHandle: 'yes', label: 'Yes' },
-        { id: 'e-cond1-ai2', source: 'condition-1', target: 'ai-2', sourceHandle: 'no', label: 'No' },
-        { id: 'e-ai2-email2', source: 'ai-2', target: 'email-2' },
-        { id: 'e-email2-end', source: 'email-2', target: 'end-1' },
-        { id: 'e-update1-end', source: 'update-1', target: 'end-1' },
-      ]),
-    },
-    {
-      name: 'Lead Nurture Drip',
-      description: 'Multi-touch nurture sequence for warm leads',
-      nodes: JSON.stringify([
-        { id: 'start-1', type: 'startNode', position: { x: 250, y: 50 }, data: { label: 'Start', trigger: 'manual' } },
-        { id: 'ai-1', type: 'aiGenerateNode', position: { x: 250, y: 180 }, data: { label: 'Welcome Email', prompt: 'Write a warm welcome email to {{name}}.', tone: 'friendly', maxLength: 200 } },
-        { id: 'email-1', type: 'emailNode', position: { x: 250, y: 320 }, data: { label: 'Send Welcome', subject: 'Welcome, {{name}}!', fromName: 'FlowReach Team' } },
-        { id: 'delay-1', type: 'delayNode', position: { x: 250, y: 460 }, data: { label: 'Wait 2 Days', duration: 2, unit: 'days' } },
-        { id: 'update-1', type: 'updateLeadNode', position: { x: 250, y: 600 }, data: { label: 'Mark Contacted', status: 'contacted' } },
-        { id: 'end-1', type: 'endNode', position: { x: 250, y: 740 }, data: { label: 'End' } },
-      ]),
-      edges: JSON.stringify([
-        { id: 'e-start-ai1', source: 'start-1', target: 'ai-1' },
-        { id: 'e-ai1-email1', source: 'ai-1', target: 'email-1' },
-        { id: 'e-email1-delay1', source: 'email-1', target: 'delay-1' },
-        { id: 'e-delay1-update1', source: 'delay-1', target: 'update-1' },
-        { id: 'e-update1-end', source: 'update-1', target: 'end-1' },
-      ]),
-    },
-    {
-      name: 'Re-engagement Campaign',
-      description: 'Win-back campaign for leads that went cold',
-      nodes: JSON.stringify([
-        { id: 'start-1', type: 'startNode', position: { x: 250, y: 50 }, data: { label: 'Start', trigger: 'manual' } },
-        { id: 'condition-1', type: 'conditionNode', position: { x: 250, y: 180 }, data: { label: 'Is Bounced?', field: 'status', operator: 'equals', value: 'bounced' } },
-        { id: 'update-1', type: 'updateLeadNode', position: { x: 500, y: 320 }, data: { label: 'Mark Unsubscribed', status: 'unsubscribed' } },
-        { id: 'ai-1', type: 'aiGenerateNode', position: { x: 50, y: 320 }, data: { label: 'Win-back Email', prompt: 'Write a re-engagement email to {{name}}.', tone: 'casual', maxLength: 180 } },
-        { id: 'email-1', type: 'emailNode', position: { x: 50, y: 460 }, data: { label: 'Send Win-back', subject: 'We miss you!', fromName: 'FlowReach AI' } },
-        { id: 'end-1', type: 'endNode', position: { x: 250, y: 600 }, data: { label: 'End' } },
-      ]),
-      edges: JSON.stringify([
-        { id: 'e-start-cond1', source: 'start-1', target: 'condition-1' },
-        { id: 'e-cond1-update', source: 'condition-1', target: 'update-1', sourceHandle: 'yes', label: 'Yes' },
-        { id: 'e-cond1-ai1', source: 'condition-1', target: 'ai-1', sourceHandle: 'no', label: 'No' },
-        { id: 'e-ai1-email1', source: 'ai-1', target: 'email-1' },
-        { id: 'e-email1-end', source: 'email-1', target: 'end-1' },
-        { id: 'e-update-end', source: 'update-1', target: 'end-1' },
-      ]),
-    },
-    {
-      name: 'AI-Powered Lead Scoring',
-      description: 'Use AI to score and route leads automatically',
-      nodes: JSON.stringify([
-        { id: 'start-1', type: 'startNode', position: { x: 250, y: 50 }, data: { label: 'Start', trigger: 'webhook' } },
-        { id: 'ai-1', type: 'aiAgentNode', position: { x: 250, y: 200 }, data: { label: 'Score Lead', provider: 'groq', model: 'llama-3.3-70b-versatile', systemPrompt: 'Score this lead 1-10.', userPrompt: 'Lead: {{name}}, {{company}}, {{title}}' } },
-        { id: 'condition-1', type: 'conditionNode', position: { x: 250, y: 380 }, data: { label: 'Score > 7?', field: 'score', operator: 'greater_than', value: '7' } },
-        { id: 'update-1', type: 'updateLeadNode', position: { x: 450, y: 520 }, data: { label: 'Mark Hot', status: 'contacted' } },
-        { id: 'update-2', type: 'updateLeadNode', position: { x: 50, y: 520 }, data: { label: 'Mark Cold', status: 'new' } },
-        { id: 'end-1', type: 'endNode', position: { x: 250, y: 660 }, data: { label: 'End' } },
-      ]),
-      edges: JSON.stringify([
-        { id: 'e-start-ai', source: 'start-1', target: 'ai-1' },
-        { id: 'e-ai-cond', source: 'ai-1', target: 'condition-1' },
-        { id: 'e-cond-hot', source: 'condition-1', target: 'update-1', sourceHandle: 'yes', label: 'Yes' },
-        { id: 'e-cond-cold', source: 'condition-1', target: 'update-2', sourceHandle: 'no', label: 'No' },
-        { id: 'e-hot-end', source: 'update-1', target: 'end-1' },
-        { id: 'e-cold-end', source: 'update-2', target: 'end-1' },
-      ]),
-    },
-    {
-      name: 'Multi-Channel Outreach',
-      description: 'A/B split between email and SMS channels',
-      nodes: JSON.stringify([
-        { id: 'start-1', type: 'startNode', position: { x: 250, y: 50 }, data: { label: 'Start', trigger: 'scheduled' } },
-        { id: 'split-1', type: 'splitNode', position: { x: 250, y: 200 }, data: { label: 'A/B Split', mode: 'percentage', percentages: [50, 50] } },
-        { id: 'email-1', type: 'emailNode', position: { x: 100, y: 370 }, data: { label: 'Email Path', subject: 'Hello {{name}}', fromName: 'FlowReach' } },
-        { id: 'sms-1', type: 'smsNode', position: { x: 400, y: 370 }, data: { label: 'SMS Path', message: 'Hi {{name}}, check your inbox!' } },
-        { id: 'end-1', type: 'endNode', position: { x: 250, y: 520 }, data: { label: 'End' } },
-      ]),
-      edges: JSON.stringify([
-        { id: 'e-start-split', source: 'start-1', target: 'split-1' },
-        { id: 'e-split-email', source: 'split-1', target: 'email-1', sourceHandle: 'a' },
-        { id: 'e-split-sms', source: 'split-1', target: 'sms-1', sourceHandle: 'b' },
-        { id: 'e-email-end', source: 'email-1', target: 'end-1' },
-        { id: 'e-sms-end', source: 'sms-1', target: 'end-1' },
-      ]),
-    },
-  ];
+  const res = await fetch(`${API_BASE}/api/workflows/seed-templates`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to seed templates' }));
+    throw new Error(err.error || 'Failed to seed templates');
+  }
+  return res.json();
+}
 
-  const { data, error } = await supabase.from('workflows').insert(templates).select();
-  if (error) throw error;
-  return data;
+// Toggle workflow active/inactive
+export async function toggleWorkflowActive(id, isActive) {
+  return updateWorkflow(id, { is_active: isActive });
 }
 
 // ──────────────────────────────────────────────
@@ -413,7 +319,7 @@ export async function fetchCredentials() {
   if (error) throw error;
 
   return (data || []).map((c) => {
-    const config = typeof c.config === 'string' ? JSON.parse(c.config) : c.config || {};
+    const config = typeof c.config === 'string' ? safeJsonParse(c.config, {}) : c.config || {};
     const masked = {};
     for (const [key, val] of Object.entries(config)) {
       if (typeof val === 'string' && val.length > 8) {
@@ -435,7 +341,7 @@ export async function fetchCredentialById(id) {
   if (error) throw error;
   return {
     ...data,
-    config: typeof data.config === 'string' ? JSON.parse(data.config) : data.config || {},
+    config: typeof data.config === 'string' ? safeJsonParse(data.config, {}) : data.config || {},
   };
 }
 
@@ -457,7 +363,7 @@ export async function createCredential({ name, type, config }) {
   if (error) throw error;
   return {
     ...data,
-    config: typeof data.config === 'string' ? JSON.parse(data.config) : data.config,
+    config: typeof data.config === 'string' ? safeJsonParse(data.config, {}) : data.config,
   };
 }
 
@@ -475,7 +381,7 @@ export async function updateCredential(id, { name, config }) {
   if (error) throw error;
   return {
     ...data,
-    config: typeof data.config === 'string' ? JSON.parse(data.config) : data.config,
+    config: typeof data.config === 'string' ? safeJsonParse(data.config, {}) : data.config,
   };
 }
 
@@ -535,6 +441,20 @@ export async function fetchExecutionById(id) {
   return data;
 }
 
+export async function fetchLeadMessageCounts(leadIds) {
+  if (!leadIds || leadIds.length === 0) return {};
+  const { data, error } = await supabase
+    .from('messages')
+    .select('lead_id')
+    .in('lead_id', leadIds);
+  if (error) throw error;
+  const counts = {};
+  for (const m of data || []) {
+    counts[m.lead_id] = (counts[m.lead_id] || 0) + 1;
+  }
+  return counts;
+}
+
 // ──────────────────────────────────────────────
 // STORAGE  (bucket: "app-files")
 // ──────────────────────────────────────────────
@@ -589,11 +509,11 @@ export async function getCurrentUserId() {
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-export async function generateAIMessage({ leadId, prompt, tone, maxLength, credentialId, model, lead }) {
+export async function generateAIMessage({ leadId, prompt, tone, maxLength, credentialId, model, lead, companyName, senderName, industry, painPoints, callToAction, signature, language, messageType }) {
   const res = await fetch(`${API_BASE}/api/ai/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ leadId, prompt, tone, maxLength, credentialId, model, lead }),
+    body: JSON.stringify({ leadId, prompt, tone, maxLength, credentialId, model, lead, companyName, senderName, industry, painPoints, callToAction, signature, language, messageType }),
   });
   if (!res.ok) {
     const err = await res.json();
@@ -648,15 +568,111 @@ export async function fetchExecutionsFromAPI({ status, limit = 50 } = {}) {
 // AI CHAT (direct AI access)
 // ──────────────────────────────────────────────
 
-export async function chatWithAI({ message, context, model }) {
+export async function chatWithAI({ message, context, model, history, conversationId }) {
   const res = await fetch(`${API_BASE}/api/ai/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, context, model }),
+    body: JSON.stringify({ message, context, model, history, conversationId }),
   });
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.error || 'AI chat failed');
+  }
+  return res.json();
+}
+
+// ──────────────────────────────────────────────
+// AI CONVERSATIONS
+// ──────────────────────────────────────────────
+
+export async function fetchAIConversations() {
+  const res = await fetch(`${API_BASE}/api/ai/conversations`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to fetch conversations' }));
+    throw new Error(err.error || 'Failed to fetch conversations');
+  }
+  return res.json();
+}
+
+export async function createAIConversation(title) {
+  const res = await fetch(`${API_BASE}/api/ai/conversations`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to create conversation' }));
+    throw new Error(err.error || 'Failed to create conversation');
+  }
+  return res.json();
+}
+
+export async function fetchConversationMessages(conversationId) {
+  const res = await fetch(`${API_BASE}/api/ai/conversations/${conversationId}/messages`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to fetch messages' }));
+    throw new Error(err.error || 'Failed to fetch messages');
+  }
+  return res.json();
+}
+
+export async function updateAIConversation(id, title) {
+  const res = await fetch(`${API_BASE}/api/ai/conversations/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to update conversation' }));
+    throw new Error(err.error || 'Failed to update conversation');
+  }
+  return res.json();
+}
+
+export async function deleteAIConversation(id) {
+  const res = await fetch(`${API_BASE}/api/ai/conversations/${id}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to delete conversation' }));
+    throw new Error(err.error || 'Failed to delete conversation');
+  }
+  return res.json();
+}
+
+// ──────────────────────────────────────────────
+// AI SEND / BULK SEND
+// ──────────────────────────────────────────────
+
+export async function sendAIMessageViaChannels({ channels, message, recipient }) {
+  const res = await fetch(`${API_BASE}/api/ai/send`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ channels, message, recipient }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Send failed' }));
+    throw new Error(err.error || 'Send failed');
+  }
+  return res.json();
+}
+
+export async function bulkSendAIMessages(payload) {
+  const res = await fetch(`${API_BASE}/api/ai/bulk-send`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Bulk send failed' }));
+    throw new Error(err.error || 'Bulk send failed');
+  }
+  return res.json();
+}
+
+export async function fetchLeadsForSelector(limit = 500) {
+  const res = await fetch(`${API_BASE}/api/leads?limit=${limit}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to fetch leads' }));
+    throw new Error(err.error || 'Failed to fetch leads');
   }
   return res.json();
 }
@@ -670,6 +686,45 @@ export async function createWorkflowWithAI({ description }) {
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.error || 'AI workflow creation failed');
+  }
+  return res.json();
+}
+
+// ──────────────────────────────────────────────
+// PROFILE
+// ──────────────────────────────────────────────
+
+export async function fetchProfileAPI() {
+  const res = await fetch(`${API_BASE}/api/profile`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to fetch profile' }));
+    throw new Error(err.error || 'Failed to fetch profile');
+  }
+  return res.json();
+}
+
+export async function updateProfileAPI(profile) {
+  const res = await fetch(`${API_BASE}/api/profile`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(profile),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to save profile' }));
+    throw new Error(err.error || 'Failed to save profile');
+  }
+  return res.json();
+}
+
+export async function uploadAvatarAPI({ base64, filename, contentType }) {
+  const res = await fetch(`${API_BASE}/api/profile/avatar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ base64, filename, contentType }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to upload avatar' }));
+    throw new Error(err.error || 'Failed to upload avatar');
   }
   return res.json();
 }
@@ -739,7 +794,10 @@ export async function resetSeedData() {
 
 export async function fetchChannelAccounts() {
   const res = await fetch(`${API_BASE}/api/channels/accounts`);
-  if (!res.ok) throw new Error('Failed to fetch channel accounts');
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to fetch channel accounts' }));
+    throw new Error(err.error || 'Failed to fetch channel accounts');
+  }
   return res.json();
 }
 
@@ -749,7 +807,10 @@ export async function createChannelAccount(data) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Failed to create channel account');
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to create channel account' }));
+    throw new Error(err.error || 'Failed to create channel account');
+  }
   return res.json();
 }
 
@@ -759,13 +820,19 @@ export async function updateChannelAccount(id, data) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Failed to update channel account');
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to update channel account' }));
+    throw new Error(err.error || 'Failed to update channel account');
+  }
   return res.json();
 }
 
 export async function deleteChannelAccount(id) {
   const res = await fetch(`${API_BASE}/api/channels/accounts/${id}`, { method: 'DELETE' });
-  if (!res.ok) throw new Error('Failed to delete channel account');
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to delete channel account' }));
+    throw new Error(err.error || 'Failed to delete channel account');
+  }
   return res.json();
 }
 
@@ -773,7 +840,10 @@ export async function fetchChannelInbox({ channel, page = 1, limit = 50 } = {}) 
   const params = new URLSearchParams({ page, limit });
   if (channel) params.set('channel', channel);
   const res = await fetch(`${API_BASE}/api/channels/inbox?${params.toString()}`);
-  if (!res.ok) throw new Error('Failed to fetch inbox');
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to fetch inbox' }));
+    throw new Error(err.error || 'Failed to fetch inbox');
+  }
   return res.json();
 }
 
@@ -788,11 +858,528 @@ export async function fetchMessages({ search, status, type, page = 1, limit = 50
   if (type) params.set('type', type);
   const res = await fetch(`${API_BASE}/api/messages?${params.toString()}`);
   if (!res.ok) throw new Error('Failed to fetch messages');
-  return res.json();
+  const text = await res.text();
+  try { return JSON.parse(text); } catch { return { messages: [], total: 0, page: 1, totalPages: 0 }; }
 }
 
 export async function fetchMessageById(id) {
   const res = await fetch(`${API_BASE}/api/messages/${id}`);
   if (!res.ok) throw new Error('Failed to fetch message');
+  return res.json();
+}
+
+// ──────────────────────────────────────────────
+// TEAM COLLABORATION
+// ──────────────────────────────────────────────
+
+export async function fetchTeamMembers() {
+  const res = await fetch(`${API_BASE}/api/features/team-members`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to fetch team members' }));
+    throw new Error(err.error || 'Failed to fetch team members');
+  }
+  return res.json();
+}
+
+export async function inviteTeamMember({ name, email, role }) {
+  const res = await fetch(`${API_BASE}/api/features/team-members`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, email, role }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to invite team member' }));
+    throw new Error(err.error || 'Failed to invite team member');
+  }
+  return res.json();
+}
+
+export async function updateTeamMember(id, updates) {
+  const res = await fetch(`${API_BASE}/api/features/team-members/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to update team member' }));
+    throw new Error(err.error || 'Failed to update team member');
+  }
+  return res.json();
+}
+
+export async function removeTeamMember(id) {
+  const res = await fetch(`${API_BASE}/api/features/team-members/${id}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to remove team member' }));
+    throw new Error(err.error || 'Failed to remove team member');
+  }
+  return res.json();
+}
+
+export async function fetchTeamActivity() {
+  const res = await fetch(`${API_BASE}/api/features/team-activity`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to fetch team activity' }));
+    throw new Error(err.error || 'Failed to fetch team activity');
+  }
+  return res.json();
+}
+
+// ──────────────────────────────────────────────
+// WEBHOOKS
+// ──────────────────────────────────────────────
+
+export async function fetchWebhooks() {
+  const res = await fetch(`${API_BASE}/api/features/webhooks`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to fetch webhooks' }));
+    throw new Error(err.error || 'Failed to fetch webhooks');
+  }
+  return res.json();
+}
+
+export async function createWebhook({ name, url, events, headers }) {
+  const res = await fetch(`${API_BASE}/api/features/webhooks`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, url, events, headers }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to create webhook' }));
+    throw new Error(err.error || 'Failed to create webhook');
+  }
+  return res.json();
+}
+
+export async function updateWebhook(id, updates) {
+  const res = await fetch(`${API_BASE}/api/features/webhooks/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to update webhook' }));
+    throw new Error(err.error || 'Failed to update webhook');
+  }
+  return res.json();
+}
+
+export async function deleteWebhookAPI(id) {
+  const res = await fetch(`${API_BASE}/api/features/webhooks/${id}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to delete webhook' }));
+    throw new Error(err.error || 'Failed to delete webhook');
+  }
+  return res.json();
+}
+
+export async function testWebhookAPI(id) {
+  const res = await fetch(`${API_BASE}/api/features/webhooks/${id}/test`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Webhook test failed' }));
+    throw new Error(err.error || 'Webhook test failed');
+  }
+  return res.json();
+}
+
+// ──────────────────────────────────────────────
+// BOOKING LINKS (Calendar Integration)
+// ──────────────────────────────────────────────
+
+export async function fetchBookingLinks() {
+  const res = await fetch(`${API_BASE}/api/features/booking-links`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to fetch booking links' }));
+    throw new Error(err.error || 'Failed to fetch booking links');
+  }
+  return res.json();
+}
+
+export async function createBookingLink({ name, duration, url, provider }) {
+  const res = await fetch(`${API_BASE}/api/features/booking-links`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, duration, url, provider }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to create booking link' }));
+    throw new Error(err.error || 'Failed to create booking link');
+  }
+  return res.json();
+}
+
+export async function updateBookingLink(id, updates) {
+  const res = await fetch(`${API_BASE}/api/features/booking-links/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to update booking link' }));
+    throw new Error(err.error || 'Failed to update booking link');
+  }
+  return res.json();
+}
+
+export async function deleteBookingLink(id) {
+  const res = await fetch(`${API_BASE}/api/features/booking-links/${id}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to delete booking link' }));
+    throw new Error(err.error || 'Failed to delete booking link');
+  }
+  return res.json();
+}
+
+// ──────────────────────────────────────────────
+// CRM INTEGRATIONS
+// ──────────────────────────────────────────────
+
+export async function fetchCRMIntegrations() {
+  const res = await fetch(`${API_BASE}/api/features/crm-integrations`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to fetch CRM integrations' }));
+    throw new Error(err.error || 'Failed to fetch CRM integrations');
+  }
+  return res.json();
+}
+
+export async function connectCRM({ provider, config }) {
+  const res = await fetch(`${API_BASE}/api/features/crm-integrations`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider, config }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to connect CRM' }));
+    throw new Error(err.error || 'Failed to connect CRM');
+  }
+  return res.json();
+}
+
+export async function updateCRMIntegration(id, updates) {
+  const res = await fetch(`${API_BASE}/api/features/crm-integrations/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to update CRM integration' }));
+    throw new Error(err.error || 'Failed to update CRM integration');
+  }
+  return res.json();
+}
+
+export async function disconnectCRM(provider) {
+  const res = await fetch(`${API_BASE}/api/features/crm-integrations/${provider}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to disconnect CRM' }));
+    throw new Error(err.error || 'Failed to disconnect CRM');
+  }
+  return res.json();
+}
+
+// ──────────────────────────────────────────────
+// ANALYTICS EXPORT
+// ──────────────────────────────────────────────
+
+export async function fetchAnalyticsExport() {
+  const res = await fetch(`${API_BASE}/api/features/analytics/export`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to fetch analytics' }));
+    throw new Error(err.error || 'Failed to fetch analytics');
+  }
+  return res.json();
+}
+
+export async function fetchExportHistory() {
+  const res = await fetch(`${API_BASE}/api/features/export-history`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to fetch export history' }));
+    throw new Error(err.error || 'Failed to fetch export history');
+  }
+  return res.json();
+}
+
+export async function logExport({ export_type, record_count, file_name, file_size_bytes }) {
+  const res = await fetch(`${API_BASE}/api/features/export-history`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ export_type, record_count, file_name, file_size_bytes }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to log export' }));
+    throw new Error(err.error || 'Failed to log export');
+  }
+  return res.json();
+}
+
+export async function deleteExportRecord(id) {
+  const res = await fetch(`${API_BASE}/api/features/export-history/${id}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to delete export record' }));
+    throw new Error(err.error || 'Failed to delete export record');
+  }
+  return res.json();
+}
+
+// ──────────────────────────────────────────────
+// A/B TESTING
+// ──────────────────────────────────────────────
+
+export async function fetchABTests() {
+  const res = await fetch(`${API_BASE}/api/features/ab-tests`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to fetch A/B tests' }));
+    throw new Error(err.error || 'Failed to fetch A/B tests');
+  }
+  return res.json();
+}
+
+export async function createABTest(test) {
+  const res = await fetch(`${API_BASE}/api/features/ab-tests`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(test),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to create A/B test' }));
+    throw new Error(err.error || 'Failed to create A/B test');
+  }
+  return res.json();
+}
+
+export async function updateABTest(id, updates) {
+  const res = await fetch(`${API_BASE}/api/features/ab-tests/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to update A/B test' }));
+    throw new Error(err.error || 'Failed to update A/B test');
+  }
+  return res.json();
+}
+
+export async function deleteABTest(id) {
+  const res = await fetch(`${API_BASE}/api/features/ab-tests/${id}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to delete A/B test' }));
+    throw new Error(err.error || 'Failed to delete A/B test');
+  }
+  return res.json();
+}
+
+// ──────────────────────────────────────────────
+// EMAIL TRACKING
+// ──────────────────────────────────────────────
+
+export async function fetchTrackingStats() {
+  const res = await fetch(`${API_BASE}/api/features/tracking-stats`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to fetch tracking stats' }));
+    throw new Error(err.error || 'Failed to fetch tracking stats');
+  }
+  const text = await res.text();
+  try { return JSON.parse(text); } catch { return { totalSent: 0, totalOpened: 0, opens: 0, clicks: 0, openRate: 0 }; }
+}
+
+export async function fetchEmailEvents(limit = 50) {
+  const res = await fetch(`${API_BASE}/api/features/email-events?limit=${limit}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to fetch email events' }));
+    throw new Error(err.error || 'Failed to fetch email events');
+  }
+  const text = await res.text();
+  try { return JSON.parse(text); } catch { return []; }
+}
+
+// ──────────────────────────────────────────────
+// FOLLOW-UP SEQUENCES
+// ──────────────────────────────────────────────
+
+export async function fetchSequences() {
+  const res = await fetch(`${API_BASE}/api/features/sequences`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to fetch sequences' }));
+    throw new Error(err.error || 'Failed to fetch sequences');
+  }
+  return res.json();
+}
+
+export async function createSequence(sequence) {
+  const res = await fetch(`${API_BASE}/api/features/sequences`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(sequence),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to create sequence' }));
+    throw new Error(err.error || 'Failed to create sequence');
+  }
+  return res.json();
+}
+
+export async function updateSequence(id, updates) {
+  const res = await fetch(`${API_BASE}/api/features/sequences/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to update sequence' }));
+    throw new Error(err.error || 'Failed to update sequence');
+  }
+  return res.json();
+}
+
+export async function deleteSequence(id) {
+  const res = await fetch(`${API_BASE}/api/features/sequences/${id}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to delete sequence' }));
+    throw new Error(err.error || 'Failed to delete sequence');
+  }
+  return res.json();
+}
+
+// ──────────────────────────────────────────────
+// EMAIL TEMPLATES
+// ──────────────────────────────────────────────
+
+export async function fetchTemplates({ category } = {}) {
+  const params = new URLSearchParams();
+  if (category) params.set('category', category);
+  const res = await fetch(`${API_BASE}/api/templates?${params.toString()}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to fetch templates' }));
+    throw new Error(err.error || 'Failed to fetch templates');
+  }
+  return res.json();
+}
+
+export async function fetchTemplateById(id) {
+  const res = await fetch(`${API_BASE}/api/templates/${id}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Template not found' }));
+    throw new Error(err.error || 'Template not found');
+  }
+  return res.json();
+}
+
+export async function createTemplate({ name, subject, body, category, tone }) {
+  const res = await fetch(`${API_BASE}/api/templates`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, subject, body, category, tone }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to create template' }));
+    throw new Error(err.error || 'Failed to create template');
+  }
+  return res.json();
+}
+
+export async function updateTemplate(id, { name, subject, body, category, tone }) {
+  const res = await fetch(`${API_BASE}/api/templates/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, subject, body, category, tone }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to update template' }));
+    throw new Error(err.error || 'Failed to update template');
+  }
+  return res.json();
+}
+
+export async function deleteTemplate(id) {
+  const res = await fetch(`${API_BASE}/api/templates/${id}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to delete template' }));
+    throw new Error(err.error || 'Failed to delete template');
+  }
+  return res.json();
+}
+
+export async function seedTemplates() {
+  const res = await fetch(`${API_BASE}/api/templates/seed`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to seed templates' }));
+    throw new Error(err.error || 'Failed to seed templates');
+  }
+  return res.json();
+}
+
+export async function generateAITemplate({ category, tone }) {
+  const res = await fetch(`${API_BASE}/api/ai/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message: `Generate an email template for category "${category}" with tone "${tone}". Return ONLY valid JSON (no markdown): {"name":"...","subject":"...","body":"..."}. Use {{name}} and {{company}} as placeholders. Keep body under 100 words.`,
+      context: 'Email template generation',
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'AI generation failed' }));
+    throw new Error(err.error || 'AI generation failed');
+  }
+  return res.json();
+}
+
+// ──────────────────────────────────────────────
+// LEAD SCORING
+// ──────────────────────────────────────────────
+
+export async function fetchLeadsForScoring() {
+  const res = await fetch(`${API_BASE}/api/leads`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to fetch leads' }));
+    throw new Error(err.error || 'Failed to fetch leads');
+  }
+  const data = await res.json();
+  return Array.isArray(data) ? data : data.leads || [];
+}
+
+export async function scoreLeadById(id) {
+  const res = await fetch(`${API_BASE}/api/features/lead-score/${id}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to score lead' }));
+    throw new Error(err.error || 'Failed to score lead');
+  }
+  return res.json();
+}
+
+export async function scoreAllLeads() {
+  const res = await fetch(`${API_BASE}/api/features/lead-score-bulk`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Bulk scoring failed' }));
+    throw new Error(err.error || 'Bulk scoring failed');
+  }
   return res.json();
 }

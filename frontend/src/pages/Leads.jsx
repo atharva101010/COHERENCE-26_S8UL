@@ -38,27 +38,27 @@ export default function Leads() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Users className="w-6 h-6 text-indigo-600" />
-          <h2 className="text-2xl font-bold text-zinc-900">Leads</h2>
+          <Users className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+          <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Leads</h2>
         </div>
         <button
           onClick={downloadSampleCSV}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-50 hover:border-zinc-300 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:border-zinc-300 dark:border-zinc-600 transition-colors"
         >
           <Download className="w-3.5 h-3.5" /> Download Sample CSV
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-zinc-100/80 p-1 rounded-xl w-fit">
+      <div className="flex gap-1 bg-zinc-100/80 dark:bg-zinc-800/80 p-1 rounded-xl w-fit">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setActiveTab(id)}
             className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
               activeTab === id
-                ? 'bg-white text-zinc-900 shadow-sm shadow-zinc-200/50'
-                : 'text-zinc-500 hover:text-zinc-700'
+                ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm shadow-zinc-200/50'
+                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:text-zinc-300'
             }`}
           >
             <Icon className="w-4 h-4" />

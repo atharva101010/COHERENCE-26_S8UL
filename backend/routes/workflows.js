@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import supabase from '../db.js';
+import { safeJsonParse } from '../utils.js';
 
 const router = Router();
 
@@ -15,8 +16,8 @@ router.get('/', async (req, res) => {
 
     const workflows = (rows || []).map(w => ({
       ...w,
-      nodes: typeof w.nodes === 'string' ? JSON.parse(w.nodes) : (w.nodes || []),
-      edges: typeof w.edges === 'string' ? JSON.parse(w.edges) : (w.edges || []),
+      nodes: safeJsonParse(w.nodes, []),
+      edges: safeJsonParse(w.edges, []),
       is_active: Boolean(w.is_active)
     }));
     res.json({ workflows });
@@ -38,8 +39,8 @@ router.get('/:id', async (req, res) => {
 
     res.json({
       ...row,
-      nodes: typeof row.nodes === 'string' ? JSON.parse(row.nodes) : (row.nodes || []),
-      edges: typeof row.edges === 'string' ? JSON.parse(row.edges) : (row.edges || []),
+      nodes: safeJsonParse(row.nodes, []),
+      edges: safeJsonParse(row.edges, []),
       is_active: Boolean(row.is_active)
     });
   } catch (err) {
@@ -70,8 +71,8 @@ router.post('/', async (req, res) => {
 
     res.status(201).json({
       ...created,
-      nodes: typeof created.nodes === 'string' ? JSON.parse(created.nodes) : created.nodes,
-      edges: typeof created.edges === 'string' ? JSON.parse(created.edges) : created.edges,
+      nodes: safeJsonParse(created.nodes, []),
+      edges: safeJsonParse(created.edges, []),
       is_active: Boolean(created.is_active)
     });
   } catch (err) {
@@ -113,8 +114,8 @@ router.put('/:id', async (req, res) => {
 
     res.json({
       ...updated,
-      nodes: typeof updated.nodes === 'string' ? JSON.parse(updated.nodes) : updated.nodes,
-      edges: typeof updated.edges === 'string' ? JSON.parse(updated.edges) : updated.edges,
+      nodes: safeJsonParse(updated.nodes, []),
+      edges: safeJsonParse(updated.edges, []),
       is_active: Boolean(updated.is_active)
     });
   } catch (err) {
@@ -125,13 +126,23 @@ router.put('/:id', async (req, res) => {
 // DELETE /api/workflows/:id
 router.delete('/:id', async (req, res) => {
   try {
+    const id = Number(req.params.id);
+
+    const { data: existing, error: fetchErr } = await supabase
+      .from('workflows')
+      .select('id')
+      .eq('id', id)
+      .single();
+
+    if (fetchErr || !existing) return res.status(404).json({ error: 'Workflow not found' });
+
     const { error } = await supabase
       .from('workflows')
       .delete()
-      .eq('id', Number(req.params.id));
+      .eq('id', id);
 
     if (error) return res.status(500).json({ error: error.message });
-    res.json({ message: 'Workflow deleted' });
+    res.json({ deleted: true, id });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

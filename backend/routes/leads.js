@@ -168,13 +168,14 @@ router.put('/:id', async (req, res) => {
 // DELETE /api/leads/:id - delete a lead
 router.delete('/:id', async (req, res) => {
   try {
+    const id = Number(req.params.id);
     const { error } = await supabase
       .from('leads')
       .delete()
-      .eq('id', Number(req.params.id));
+      .eq('id', id);
 
     if (error) return res.status(500).json({ error: error.message });
-    res.json({ success: true });
+    res.json({ deleted: true, id });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

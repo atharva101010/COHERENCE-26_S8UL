@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import supabase from '../db.js';
 import { WorkflowExecutor } from '../executor.js';
+import { safeJsonParse } from '../utils.js';
 
 const router = Router();
 
@@ -28,8 +29,8 @@ router.post('/run', async (req, res) => {
     }
 
     // Validate workflow has nodes and a start node
-    const nodes = typeof workflow.nodes === 'string' ? JSON.parse(workflow.nodes) : workflow.nodes || [];
-    const edges = typeof workflow.edges === 'string' ? JSON.parse(workflow.edges) : workflow.edges || [];
+    const nodes = safeJsonParse(workflow.nodes, []);
+    const edges = safeJsonParse(workflow.edges, []);
 
     if (nodes.length === 0) {
       return res.status(400).json({ error: 'Workflow has no nodes. Add at least a Start and End node.' });
@@ -77,7 +78,6 @@ router.post('/run', async (req, res) => {
         .single();
 
       if (execError) {
-        console.error('Failed to create execution:', execError.message);
         continue;
       }
 
@@ -91,8 +91,8 @@ router.post('/run', async (req, res) => {
         io,
       });
 
-      executor.execute().catch(err => {
-        console.error(`Execution ${exec.id} error:`, err);
+      executor.execute().catch(() => {
+        /* execution error handled internally */
       });
     }
 
@@ -103,7 +103,6 @@ router.post('/run', async (req, res) => {
       leadCount: leads.length,
     });
   } catch (err) {
-    console.error('Run execution error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -129,12 +128,11 @@ router.get('/', async (req, res) => {
     // Parse logs
     const parsed = (data || []).map(exec => ({
       ...exec,
-      logs: typeof exec.logs === 'string' ? JSON.parse(exec.logs) : exec.logs || [],
+      logs: safeJsonParse(exec.logs, []),
     }));
 
     res.json(parsed);
   } catch (err) {
-    console.error('Fetch executions error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -150,7 +148,7 @@ router.get('/:id', async (req, res) => {
 
     if (error || !data) return res.status(404).json({ error: 'Execution not found' });
 
-    data.logs = typeof data.logs === 'string' ? JSON.parse(data.logs) : data.logs || [];
+    data.logs = safeJsonParse(data.logs, []);
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { Bell, Search, Sparkles, Wifi, WifiOff } from 'lucide-react';
+import { Bell, Search, Sparkles, Wifi, WifiOff, Moon, Sun } from 'lucide-react';
 
 const pageTitles = {
   '/': 'Dashboard',
@@ -25,6 +25,22 @@ export default function Header() {
   const location = useLocation();
   const title = pageTitles[location.pathname] || 'FlowReach AI';
   const [online, setOnline] = useState(true);
+  const [dark, setDark] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    return saved === 'dark';
+  });
+
+  const toggleDark = () => {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.classList.toggle('dark', next);
+    localStorage.setItem('theme', next ? 'dark' : 'light');
+  };
+
+  useEffect(() => {
+    // Sync DOM class with state on mount
+    document.documentElement.classList.toggle('dark', dark);
+  }, []);
 
   useEffect(() => {
     const check = async () => {
@@ -39,15 +55,15 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="h-16 bg-white/80 backdrop-blur-sm border-b border-zinc-200/60 flex items-center justify-between px-6 sticky top-0 z-10">
+    <header className="h-16 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border-b border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-between px-6 sticky top-0 z-10">
       <div>
-        <h1 className="text-lg font-semibold text-zinc-900">{title}</h1>
+        <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{title}</h1>
       </div>
 
       <div className="flex items-center gap-3">
         {/* System Status */}
         <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${
-          online ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
+          online ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400'
         }`}>
           {online ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
           {online ? 'Online' : 'Offline'}
@@ -58,20 +74,28 @@ export default function Header() {
           <input
             type="text"
             placeholder="Search anything..."
-            className="pl-9 pr-4 py-2 text-sm bg-zinc-50/80 border border-zinc-200/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 w-64 transition-all placeholder:text-zinc-400"
+            className="pl-9 pr-4 py-2 text-sm bg-zinc-50/80 dark:bg-zinc-800/80 border border-zinc-200/60 dark:border-zinc-700/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 dark:focus:border-indigo-500 w-64 transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-500 dark:text-zinc-200"
           />
         </div>
 
-        <button className="relative p-2 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all duration-200">
+        <button className="relative p-2 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 dark:hover:text-indigo-400 rounded-xl transition-all duration-200">
           <Sparkles className="w-5 h-5" />
         </button>
 
-        <button className="relative p-2 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 rounded-xl transition-all duration-200">
+        <button
+          onClick={toggleDark}
+          className="relative p-2 text-zinc-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:text-yellow-300 dark:hover:bg-zinc-700 rounded-xl transition-all duration-200"
+          title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {dark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        </button>
+
+        <button className="relative p-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-all duration-200">
           <Bell className="w-5 h-5" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-indigo-600 rounded-full" />
         </button>
 
-        <div className="w-px h-8 bg-zinc-200/60 mx-1" />
+        <div className="w-px h-8 bg-zinc-200/60 dark:bg-zinc-700/60 mx-1" />
 
         <Link to="/profile" className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-xl flex items-center justify-center shadow-md shadow-indigo-200/50 cursor-pointer hover:shadow-lg hover:shadow-indigo-300/50 transition-all" title="Profile">
           <span className="text-white text-sm font-bold">H</span>

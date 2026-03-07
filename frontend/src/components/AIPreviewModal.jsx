@@ -69,16 +69,16 @@ export default function AIPreviewModal({ isOpen, onClose, nodeData }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col mx-4">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col mx-4">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 bg-gradient-to-r from-violet-50 to-indigo-50 rounded-t-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-zinc-700 bg-gradient-to-r from-violet-50 to-indigo-50 rounded-t-2xl">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-200">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-zinc-900">AI Message Preview</h2>
-              <p className="text-xs text-zinc-500">
+              <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">AI Message Preview</h2>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
                 {source === 'mock' ? 'Using mock data (no API key set)' : 'Generated via Groq AI'}
               </p>
             </div>
@@ -87,7 +87,7 @@ export default function AIPreviewModal({ isOpen, onClose, nodeData }) {
             <button
               onClick={fetchPreviews}
               disabled={loading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-indigo-700 bg-indigo-100 hover:bg-indigo-200 rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-900/40 hover:bg-indigo-200 rounded-lg transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
               Regenerate
@@ -96,44 +96,44 @@ export default function AIPreviewModal({ isOpen, onClose, nodeData }) {
               onClick={onClose}
               className="p-1.5 hover:bg-zinc-200 rounded-lg transition-colors"
             >
-              <X className="w-5 h-5 text-zinc-500" />
+              <X className="w-5 h-5 text-zinc-500 dark:text-zinc-400" />
             </button>
           </div>
         </div>
 
         {/* Prompt Info */}
-        <div className="px-6 py-3 bg-zinc-50 border-b border-zinc-200">
-          <div className="flex flex-wrap gap-4 text-xs text-zinc-600">
+        <div className="px-6 py-3 bg-zinc-50 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700">
+          <div className="flex flex-wrap gap-4 text-xs text-zinc-600 dark:text-zinc-400">
             <span className="flex items-center gap-1">
               <Mail className="w-3.5 h-3.5" />
-              Tone: <strong className="text-zinc-800">{nodeData.tone || 'professional'}</strong>
+              Tone: <strong className="text-zinc-800 dark:text-zinc-200">{nodeData.tone || 'professional'}</strong>
             </span>
             <span>
-              Max: <strong className="text-zinc-800">{nodeData.maxLength || 200}</strong> words
+              Max: <strong className="text-zinc-800 dark:text-zinc-200">{nodeData.maxLength || 200}</strong> words
             </span>
             {nodeData.companyName && (
               <span>
-                Company: <strong className="text-zinc-800">{nodeData.companyName}</strong>
+                Company: <strong className="text-zinc-800 dark:text-zinc-200">{nodeData.companyName}</strong>
               </span>
             )}
             {nodeData.senderName && (
               <span>
-                From: <strong className="text-zinc-800">{nodeData.senderName}</strong>
+                From: <strong className="text-zinc-800 dark:text-zinc-200">{nodeData.senderName}</strong>
               </span>
             )}
             {nodeData.industry && (
               <span>
-                Industry: <strong className="text-zinc-800">{nodeData.industry}</strong>
+                Industry: <strong className="text-zinc-800 dark:text-zinc-200">{nodeData.industry}</strong>
               </span>
             )}
             {nodeData.messageType && (
               <span>
-                Type: <strong className="text-zinc-800">{nodeData.messageType.replaceAll('_', ' ')}</strong>
+                Type: <strong className="text-zinc-800 dark:text-zinc-200">{nodeData.messageType.replaceAll('_', ' ')}</strong>
               </span>
             )}
           </div>
-          <p className="mt-1.5 text-xs text-zinc-500 truncate">
-            Prompt: <span className="text-zinc-700">{nodeData.prompt || 'No prompt set'}</span>
+          <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400 truncate">
+            Prompt: <span className="text-zinc-700 dark:text-zinc-300">{nodeData.prompt || 'No prompt set'}</span>
           </p>
         </div>
 
@@ -149,10 +149,10 @@ export default function AIPreviewModal({ isOpen, onClose, nodeData }) {
 
           {error && !loading && (
             <div className="flex flex-col items-center justify-center py-12">
-              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-3">
+              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center mb-3">
                 <AlertTriangle className="w-6 h-6 text-red-500" />
               </div>
-              <p className="text-sm font-medium text-red-700">{error}</p>
+              <p className="text-sm font-medium text-red-700 dark:text-red-300">{error}</p>
               <button
                 onClick={fetchPreviews}
                 className="mt-3 px-4 py-1.5 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
@@ -163,16 +163,16 @@ export default function AIPreviewModal({ isOpen, onClose, nodeData }) {
           )}
 
           {!loading && !error && previews.map((preview) => (
-            <div key={preview.id} className="border border-zinc-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
+            <div key={preview.id} className="border border-zinc-200 dark:border-zinc-700 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
               {/* Lead info bar */}
-              <div className="flex items-center justify-between px-4 py-2.5 bg-gradient-to-r from-zinc-50 to-zinc-100 border-b border-zinc-200">
+              <div className="flex items-center justify-between px-4 py-2.5 bg-gradient-to-r from-zinc-50 to-zinc-100 border-b border-zinc-200 dark:border-zinc-700">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                    <User className="w-4 h-4 text-indigo-600" />
+                  <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
+                    <User className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-zinc-900">{preview.lead?.name || 'Unknown'}</p>
-                    <div className="flex items-center gap-2 text-xs text-zinc-500">
+                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{preview.lead?.name || 'Unknown'}</p>
+                    <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
                       <span>{preview.lead?.email || ''}</span>
                       {preview.lead?.company && (
                         <>
@@ -188,7 +188,7 @@ export default function AIPreviewModal({ isOpen, onClose, nodeData }) {
                 </div>
                 <button
                   onClick={() => handleCopy(`Subject: ${preview.subject}\n\n${preview.body}`, preview.id)}
-                  className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-zinc-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+                  className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:bg-indigo-900/30 rounded-md transition-colors"
                 >
                   {copiedId === preview.id ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
                   {copiedId === preview.id ? 'Copied!' : 'Copy'}
@@ -199,16 +199,16 @@ export default function AIPreviewModal({ isOpen, onClose, nodeData }) {
               <div className="p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Mail className="w-4 h-4 text-blue-500" />
-                  <span className="text-sm font-semibold text-zinc-800">{preview.subject}</span>
+                  <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">{preview.subject}</span>
                 </div>
-                <div className="text-sm text-zinc-600 whitespace-pre-line leading-relaxed pl-6">
+                <div className="text-sm text-zinc-600 dark:text-zinc-400 whitespace-pre-line leading-relaxed pl-6">
                   {preview.body}
                 </div>
               </div>
 
               {/* Footer */}
-              <div className="px-4 py-2 bg-zinc-50 border-t border-zinc-100 flex items-center gap-3 text-xs text-zinc-400">
-                <span className={`px-2 py-0.5 rounded-full ${preview.source === 'groq' ? 'bg-violet-100 text-violet-700' : 'bg-amber-100 text-amber-700'}`}>
+              <div className="px-4 py-2 bg-zinc-50 dark:bg-zinc-800 border-t border-zinc-100 dark:border-zinc-800 flex items-center gap-3 text-xs text-zinc-400">
+                <span className={`px-2 py-0.5 rounded-full ${preview.source === 'groq' ? 'bg-violet-100 text-violet-700 dark:text-violet-300' : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'}`}>
                   {preview.source === 'groq' ? `Groq • ${preview.model || 'llama-3.3-70b'}` : 'Mock Data'}
                 </span>
                 <span>Tone: {preview.tone}</span>
@@ -225,14 +225,14 @@ export default function AIPreviewModal({ isOpen, onClose, nodeData }) {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t border-zinc-200 bg-zinc-50 rounded-b-2xl flex items-center justify-between">
+        <div className="px-6 py-3 border-t border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 rounded-b-2xl flex items-center justify-between">
           <p className="text-xs text-zinc-400">
             {previews.length} preview{previews.length === 1 ? '' : 's'} generated
             {source === 'mock' && ' • Add a Groq API key in Settings for real AI generation'}
           </p>
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-zinc-700 bg-zinc-200 hover:bg-zinc-300 rounded-lg transition-colors"
+            className="px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-200 hover:bg-zinc-300 rounded-lg transition-colors"
           >
             Close
           </button>

@@ -11,7 +11,12 @@ createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <TooltipProvider delayDuration={0}>
         <App />
-        <Toaster position="top-right" />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            className: '!bg-white !text-zinc-900 !border-zinc-200 dark:!bg-zinc-900 dark:!text-zinc-100 dark:!border-zinc-700',
+          }}
+        />
       </TooltipProvider>
     </BrowserRouter>
   </StrictMode>,

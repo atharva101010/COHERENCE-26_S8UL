@@ -1,5 +1,6 @@
 import supabase from './db.js';
 import { generateMessage, replaceVariables } from './ai.js';
+import { safeJsonParse } from './utils.js';
 import nodemailer from 'nodemailer';
 
 // ──────────────────────────────────────────────
@@ -15,8 +16,8 @@ export class WorkflowExecutor {
     this.io = io;
     this.logs = [];
     this.context = { lead: { ...lead }, generatedMessage: null };
-    this.nodes = typeof workflow.nodes === 'string' ? JSON.parse(workflow.nodes) : workflow.nodes || [];
-    this.edges = typeof workflow.edges === 'string' ? JSON.parse(workflow.edges) : workflow.edges || [];
+    this.nodes = safeJsonParse(workflow.nodes, []);
+    this.edges = safeJsonParse(workflow.edges, []);
   }
 
   // Find the start node
@@ -62,7 +63,7 @@ export class WorkflowExecutor {
       .from('executions')
       .update({ ...fields, logs: JSON.stringify(this.logs) })
       .eq('id', this.executionId);
-    if (error) console.error('Failed to update execution:', error.message);
+    if (error) { /* failed to update execution */ }
   }
 
   // Emit status change via Socket.io
@@ -369,7 +370,7 @@ export class WorkflowExecutor {
       .maybeSingle();
 
     if (smtpCred) {
-      const config = typeof smtpCred.config === 'string' ? JSON.parse(smtpCred.config) : smtpCred.config || {};
+      const config = safeJsonParse(smtpCred.config, {});
       if (config.host && config.user && config.pass) {
         return nodemailer.createTransport({
           host: config.host,
@@ -521,7 +522,7 @@ export class WorkflowExecutor {
     try {
       const opts = { method: method || 'GET', headers: { 'Content-Type': 'application/json' } };
       if (headers) {
-        try { Object.assign(opts.headers, JSON.parse(headers)); } catch { /* ignore */ }
+        try { Object.assign(opts.headers, safeJsonParse(headers, {})); } catch { /* ignore */ }
       }
       if (body && ['POST', 'PUT', 'PATCH'].includes((method || '').toUpperCase())) {
         opts.body = replaceVariables(body, this.context.lead);

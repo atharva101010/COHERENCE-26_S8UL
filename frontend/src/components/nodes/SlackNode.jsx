@@ -4,20 +4,20 @@ import { MessageSquare } from 'lucide-react';
 export default function SlackNode({ data, selected }) {
   return (
     <div className={`px-4 py-3 rounded-xl border-2 min-w-[170px] shadow-md transition-all
-      ${selected ? 'border-green-500 shadow-green-200 ring-2 ring-green-300' : 'border-green-300'}
-      bg-gradient-to-br from-green-50 to-emerald-100`}>
+      ${selected ? 'border-green-500 shadow-green-200 dark:shadow-green-900/20 ring-2 ring-green-300' : 'border-green-300 dark:border-green-700/50'}
+      bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-950/30 dark:to-emerald-900/30`}>
       <Handle type="target" position={Position.Top} className="!bg-green-600 !w-3 !h-3 !border-2 !border-white" />
       <div className="flex items-center gap-2">
         <div className="w-8 h-8 rounded-lg bg-green-600 flex items-center justify-center">
           <MessageSquare className="w-4 h-4 text-white" />
         </div>
         <div>
-          <div className="text-xs font-medium text-green-600 uppercase tracking-wide">Slack</div>
-          <div className="text-sm font-semibold text-green-900">{data.label || 'Slack Message'}</div>
+          <div className="text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wide">Slack</div>
+          <div className="text-sm font-semibold text-green-900 dark:text-green-100">{data.label || 'Slack Message'}</div>
         </div>
       </div>
       {data.channel && (
-        <div className="mt-2 text-xs text-green-700 bg-green-200/50 px-2 py-0.5 rounded-full w-fit">
+        <div className="mt-2 text-xs text-green-700 dark:text-green-300 bg-green-200/50 dark:bg-green-800/40 px-2 py-0.5 rounded-full w-fit">
           #{data.channel}
         </div>
       )}

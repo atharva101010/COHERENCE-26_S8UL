@@ -82,13 +82,14 @@ router.put('/accounts/:id', async (req, res) => {
 // DELETE /api/channels/accounts/:id — Disconnect a channel account
 router.delete('/accounts/:id', async (req, res) => {
   try {
+    const id = Number(req.params.id);
     const { error } = await supabase
       .from('channel_accounts')
       .delete()
-      .eq('id', Number(req.params.id));
+      .eq('id', id);
 
     if (error) return res.status(500).json({ error: error.message });
-    res.json({ success: true });
+    res.json({ deleted: true, id });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -186,8 +187,7 @@ router.post('/webhook/whatsapp', async (req, res) => {
     }
 
     res.sendStatus(200);
-  } catch (err) {
-    console.error('WhatsApp webhook error:', err);
+  } catch {
     res.sendStatus(200); // Always respond 200 to avoid retries
   }
 });
@@ -235,8 +235,7 @@ router.post('/webhook/telegram', async (req, res) => {
     }
 
     res.sendStatus(200);
-  } catch (err) {
-    console.error('Telegram webhook error:', err);
+  } catch {
     res.sendStatus(200);
   }
 });
@@ -281,8 +280,7 @@ router.post('/webhook/discord', async (req, res) => {
     }
 
     res.sendStatus(200);
-  } catch (err) {
-    console.error('Discord webhook error:', err);
+  } catch {
     res.sendStatus(200);
   }
 });
@@ -328,8 +326,7 @@ router.post('/webhook/slack', async (req, res) => {
     }
 
     res.sendStatus(200);
-  } catch (err) {
-    console.error('Slack webhook error:', err);
+  } catch {
     res.sendStatus(200);
   }
 });

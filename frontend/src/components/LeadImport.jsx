@@ -94,7 +94,7 @@ export default function LeadImport({ onImportComplete }) { // eslint-disable-lin
         try {
           await uploadFile(storagePath, file);
         } catch (uploadErr) {
-          console.warn('File upload to storage failed, continuing with import:', uploadErr.message);
+          // File upload to storage failed, continuing with import
         }
       }
 
@@ -110,7 +110,7 @@ export default function LeadImport({ onImportComplete }) { // eslint-disable-lin
       setMapping({});
       setPreview([]);
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Import failed');
+      toast.error(err.message || 'Import failed');
     } finally {
       setImporting(false);
     }
@@ -139,13 +139,13 @@ export default function LeadImport({ onImportComplete }) { // eslint-disable-lin
               className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-semibold transition-all duration-300 ${(() => {
                 if (step > num) return 'bg-gradient-to-br from-emerald-500 to-green-500 text-white shadow-md shadow-green-200';
                 if (step === num) return 'bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-200';
-                return 'bg-zinc-100 text-zinc-400';
+                return 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400';
               })()}`}
             >
               {step > num ? <Check className="w-4 h-4" /> : num}
             </div>
             <span className={`text-sm transition-colors ${
-              step >= num ? 'text-zinc-900 font-medium' : 'text-zinc-400'
+              step >= num ? 'text-zinc-900 dark:text-zinc-100 font-medium' : 'text-zinc-400'
             }`}>
               {label}
             </span>
@@ -167,16 +167,16 @@ export default function LeadImport({ onImportComplete }) { // eslint-disable-lin
           className={`block border-2 border-dashed rounded-2xl p-16 text-center transition-all duration-300 cursor-pointer ${
             dragOver
               ? 'border-indigo-400 bg-indigo-50/50 scale-[1.01]'
-              : 'border-zinc-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/20'
+              : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 hover:border-indigo-300 hover:bg-indigo-50/20'
           }`}
         >
           <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-violet-100 rounded-2xl flex items-center justify-center mx-auto mb-5">
-            <Upload className="w-7 h-7 text-indigo-600" />
+            <Upload className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
           </div>
-          <h3 className="text-lg font-semibold text-zinc-900 mb-2">
+          <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
             Drop your CSV or Excel file here
           </h3>
-          <p className="text-sm text-zinc-500 mb-6">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">
             Supports .csv, .xlsx, and .xls files
           </p>
           <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-medium rounded-xl hover:from-indigo-700 hover:to-violet-700 transition-all shadow-md shadow-indigo-200 hover:shadow-lg hover:shadow-indigo-300">
@@ -194,16 +194,16 @@ export default function LeadImport({ onImportComplete }) { // eslint-disable-lin
 
       {/* Step 2: Column Mapping */}
       {step === 2 && (
-        <div className="bg-white rounded-2xl border border-zinc-200/60 p-6 space-y-4">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/60 dark:border-zinc-700/60 p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-zinc-900">Map Columns</h3>
-              <p className="text-sm text-zinc-500">
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Map Columns</h3>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
                 Match your file columns to lead fields. Found {rawData.length} rows in{' '}
                 <span className="font-medium">{file?.name}</span>
               </p>
             </div>
-            <button onClick={reset} className="text-sm text-zinc-500 hover:text-zinc-700">
+            <button onClick={reset} className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:text-zinc-300">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -211,7 +211,7 @@ export default function LeadImport({ onImportComplete }) { // eslint-disable-lin
           <div className="grid gap-3">
             {ALL_FIELDS.map((field) => (
               <div key={field} className="flex items-center gap-4">
-                <div className="w-32 text-sm font-medium text-zinc-700 capitalize flex items-center gap-1">
+                <div className="w-32 text-sm font-medium text-zinc-700 dark:text-zinc-300 capitalize flex items-center gap-1">
                   {field}
                   {REQUIRED_FIELDS.includes(field) && (
                     <span className="text-red-500">*</span>
@@ -221,7 +221,7 @@ export default function LeadImport({ onImportComplete }) { // eslint-disable-lin
                 <select
                   value={mapping[field] || ''}
                   onChange={(e) => handleMappingChange(field, e.target.value)}
-                  className="flex-1 px-3 py-2 text-sm border border-zinc-200/60 rounded-xl bg-zinc-50/50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-all"
+                  className="flex-1 px-3 py-2 text-sm border border-zinc-200/60 dark:border-zinc-700/60 rounded-xl bg-zinc-50/50 dark:bg-zinc-800/50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-all"
                 >
                   <option value="">— Skip —</option>
                   {headers.map((h) => (
@@ -232,10 +232,10 @@ export default function LeadImport({ onImportComplete }) { // eslint-disable-lin
             ))}
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-zinc-200">
+          <div className="flex justify-end gap-3 pt-4 border-t border-zinc-200 dark:border-zinc-700">
             <button
               onClick={reset}
-              className="px-4 py-2 text-sm text-zinc-600 hover:text-zinc-800 transition-colors"
+              className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:text-zinc-200 transition-colors"
             >
               Cancel
             </button>
@@ -251,17 +251,17 @@ export default function LeadImport({ onImportComplete }) { // eslint-disable-lin
 
       {/* Step 3: Preview & Import */}
       {step === 3 && (
-        <div className="bg-white rounded-2xl border border-zinc-200/60 p-6 space-y-4">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/60 dark:border-zinc-700/60 p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-zinc-900">Preview & Import</h3>
-              <p className="text-sm text-zinc-500">
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Preview & Import</h3>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
                 Review {preview.length} leads before importing
               </p>
             </div>
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-amber-500" />
-              <span className="text-sm text-amber-600">
+              <span className="text-sm text-amber-600 dark:text-amber-400">
                 Showing first {Math.min(preview.length, 10)} rows
               </span>
             </div>
@@ -270,9 +270,9 @@ export default function LeadImport({ onImportComplete }) { // eslint-disable-lin
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-zinc-200">
+                <tr className="border-b border-zinc-200 dark:border-zinc-700">
                   {Object.keys(mapping).filter((k) => mapping[k]).map((field) => (
-                    <th key={field} className="text-left py-2 px-3 text-zinc-600 font-medium capitalize">
+                    <th key={field} className="text-left py-2 px-3 text-zinc-600 dark:text-zinc-400 font-medium capitalize">
                       {field}
                     </th>
                   ))}
@@ -280,9 +280,9 @@ export default function LeadImport({ onImportComplete }) { // eslint-disable-lin
               </thead>
               <tbody>
                 {preview.slice(0, 10).map((row) => (
-                  <tr key={row.email || row.name || JSON.stringify(row)} className="border-b border-zinc-100 hover:bg-zinc-50">
+                  <tr key={row.email || row.name || JSON.stringify(row)} className="border-b border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800">
                     {Object.keys(mapping).filter((k) => mapping[k]).map((field) => (
-                      <td key={field} className="py-2 px-3 text-zinc-800">
+                      <td key={field} className="py-2 px-3 text-zinc-800 dark:text-zinc-200">
                         {row[field] || '—'}
                       </td>
                     ))}
@@ -292,10 +292,10 @@ export default function LeadImport({ onImportComplete }) { // eslint-disable-lin
             </table>
           </div>
 
-          <div className="flex justify-between items-center pt-4 border-t border-zinc-200">
+          <div className="flex justify-between items-center pt-4 border-t border-zinc-200 dark:border-zinc-700">
             <button
               onClick={() => setStep(2)}
-              className="px-4 py-2 text-sm text-zinc-600 hover:text-zinc-800 transition-colors"
+              className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:text-zinc-200 transition-colors"
             >
               ← Back to Mapping
             </button>

@@ -1,15 +1,19 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Send, Bot, User, Sparkles, Loader2, Wand2, GitBranch,
   Copy, Check, RefreshCw, Trash2, ChevronRight, Mail, Building2,
   Target, Pen, MessageSquare, Hash, Phone, Users, Zap,
-  Search, Download, CheckSquare, Square
+  Search, Download, CheckSquare, Square, Plus, MessageCircle
 } from 'lucide-react';
-import { chatWithAI, createWorkflowWithAI } from '../lib/supabaseService';
+import {
+  chatWithAI, createWorkflowWithAI, generateAIMessage,
+  sendAIMessageViaChannels, bulkSendAIMessages, fetchLeadsForSelector,
+  fetchAIConversations, createAIConversation, fetchConversationMessages,
+  deleteAIConversation, updateAIConversation
+} from '../lib/supabaseService';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import PropTypes from 'prop-types';
 
 const QUICK_PROMPTS = [
   { label: 'Cold outreach email', prompt: 'Write a cold outreach email template for a SaaS product targeting CTOs' },
@@ -28,34 +32,91 @@ const WORKFLOW_PROMPTS = [
 ];
 
 function getLeadStatusBadge(status) {
-  if (status === 'converted') return 'bg-emerald-100 text-emerald-600';
-  if (status === 'contacted' || status === 'replied') return 'bg-blue-100 text-blue-600';
-  return 'bg-zinc-100 text-zinc-500';
+  if (status === 'converted') return 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400';
+  if (status === 'contacted' || status === 'replied') return 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400';
+  return 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400';
 }
 
 function getChannelStatusBadge(status) {
-  if (status === 'sent') return 'bg-emerald-100 text-emerald-700';
-  if (status === 'failed') return 'bg-red-100 text-red-700';
-  return 'bg-zinc-100 text-zinc-500';
+  if (status === 'sent') return 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300';
+  if (status === 'failed') return 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300';
+  return 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400';
 }
 
 function getResultStatusClass(status) {
-  if (status === 'sent') return 'bg-emerald-50 border-emerald-200 text-emerald-700';
-  if (status === 'logged') return 'bg-amber-50 border-amber-200 text-amber-700';
-  if (status === 'skipped') return 'bg-zinc-50 border-zinc-200 text-zinc-500';
-  return 'bg-red-50 border-red-200 text-red-700';
+  if (status === 'sent') return 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300';
+  if (status === 'logged') return 'bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300';
+  if (status === 'skipped') return 'bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400';
+  return 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300';
 }
 
 function getMessageBubbleClass(msg) {
   if (msg.role === 'user') return 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white';
-  if (msg.error) return 'bg-red-50 text-red-700 border border-red-200';
-  return 'bg-zinc-50 text-zinc-800 border border-zinc-200/60';
+  if (msg.error) return 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800';
+  return 'bg-zinc-50 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200/60 dark:border-zinc-700/60';
 }
 
-function ChatTab({ messages, loading, copiedIdx, input, setInput, messagesEndRef, sendMessage, handleKeyDown, copyMessage, setMessages }) {
+function ChatTab({ messages, loading, copiedIdx, input, setInput, messagesEndRef, sendMessage, handleKeyDown, copyMessage, setMessages, conversations, activeConvId, onSelectConversation, onNewConversation, onDeleteConversation, loadingConversations }) {
   return (
-    <div className="flex gap-6 h-[calc(100vh-280px)]">
-      <div className="flex-1 flex flex-col bg-white rounded-2xl border border-zinc-200/60 overflow-hidden">
+    <div className="flex gap-4 h-[calc(100vh-280px)]">
+      {/* Conversation Sidebar */}
+      <div className="w-56 flex-shrink-0 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/60 dark:border-zinc-700/60 flex flex-col overflow-hidden">
+        <div className="p-3 border-b border-zinc-200/60 dark:border-zinc-700/60">
+          <button
+            onClick={onNewConversation}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-lg hover:from-violet-700 hover:to-purple-700 transition-all"
+          >
+            <Plus className="w-3.5 h-3.5" /> New Chat
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+          {loadingConversations && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />
+            </div>
+          )}
+          {!loadingConversations && conversations.length === 0 && (
+            <div className="text-center py-6 text-xs text-zinc-400">
+              <MessageCircle className="w-6 h-6 mx-auto mb-2 text-zinc-300" />
+              No conversations yet
+            </div>
+          )}
+          {conversations.map(conv => {
+            const isActive = activeConvId === conv.id;
+            return (
+              <div
+                key={conv.id}
+                className={`group flex items-center gap-1 rounded-lg transition-all text-xs ${
+                  isActive
+                    ? 'bg-violet-50 dark:bg-violet-900/30 border border-violet-200'
+                    : 'hover:bg-zinc-50 dark:hover:bg-zinc-800 border border-transparent'
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => onSelectConversation(conv.id)}
+                  className={`flex-1 flex items-center gap-2 px-2.5 py-2 text-left truncate ${
+                    isActive ? 'text-violet-700 dark:text-violet-300' : 'text-zinc-600 dark:text-zinc-400'
+                  }`}
+                >
+                  <MessageCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="flex-1 truncate font-medium">{conv.title}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDeleteConversation(conv.id)}
+                  className="opacity-0 group-hover:opacity-100 p-1 mr-1 text-zinc-400 hover:text-red-500 transition-all"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Chat Area */}
+      <div className="flex-1 flex flex-col bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/60 dark:border-zinc-700/60 overflow-hidden">
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
           {messages.map((msg, idx) => (
             <div key={`msg-${msg.role}-${idx}`} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
@@ -72,7 +133,7 @@ function ChatTab({ messages, loading, copiedIdx, input, setInput, messagesEndRef
                   <div className="flex items-center gap-2 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => copyMessage(idx, msg.content)}
-                      className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-zinc-600 transition-colors"
+                      className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-zinc-600 dark:text-zinc-400 transition-colors"
                     >
                       {copiedIdx === idx ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
                       {copiedIdx === idx ? 'Copied' : 'Copy'}
@@ -95,8 +156,8 @@ function ChatTab({ messages, loading, copiedIdx, input, setInput, messagesEndRef
               <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
                 <Bot className="w-4 h-4 text-white" />
               </div>
-              <div className="bg-zinc-50 border border-zinc-200/60 rounded-2xl px-4 py-3">
-                <div className="flex items-center gap-2 text-sm text-zinc-500">
+              <div className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200/60 dark:border-zinc-700/60 rounded-2xl px-4 py-3">
+                <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Thinking...
                 </div>
@@ -105,7 +166,7 @@ function ChatTab({ messages, loading, copiedIdx, input, setInput, messagesEndRef
           )}
           <div ref={messagesEndRef} />
         </div>
-        <div className="px-4 py-3 border-t border-zinc-200/60">
+        <div className="px-4 py-3 border-t border-zinc-200/60 dark:border-zinc-700/60">
           <div className="flex items-end gap-2">
             <textarea
               value={input}
@@ -113,7 +174,7 @@ function ChatTab({ messages, loading, copiedIdx, input, setInput, messagesEndRef
               onKeyDown={handleKeyDown}
               placeholder="Ask anything about outreach, emails, workflows..."
               rows={1}
-              className="flex-1 px-4 py-2.5 text-sm border border-zinc-200 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none resize-none max-h-32"
+              className="flex-1 px-4 py-2.5 text-sm border border-zinc-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none resize-none max-h-32"
               style={{ minHeight: '42px' }}
             />
             <button
@@ -124,20 +185,13 @@ function ChatTab({ messages, loading, copiedIdx, input, setInput, messagesEndRef
               <Send className="w-4 h-4" />
             </button>
           </div>
-          <div className="flex items-center gap-2 mt-2">
-            <button
-              onClick={() => { setMessages([messages[0]]); }}
-              className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-zinc-600 transition-colors"
-            >
-              <Trash2 className="w-3 h-3" />
-              Clear chat
-            </button>
-          </div>
         </div>
       </div>
-      <div className="w-72 flex-shrink-0 space-y-4">
-        <div className="bg-white rounded-2xl border border-zinc-200/60 p-4">
-          <h4 className="text-sm font-semibold text-zinc-800 mb-3 flex items-center gap-2">
+
+      {/* Quick Prompts */}
+      <div className="w-64 flex-shrink-0 space-y-4">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/60 dark:border-zinc-700/60 p-4">
+          <h4 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 mb-3 flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-violet-500" />
             Quick Prompts
           </h4>
@@ -147,7 +201,7 @@ function ChatTab({ messages, loading, copiedIdx, input, setInput, messagesEndRef
                 key={qp.label}
                 onClick={() => sendMessage(qp.prompt)}
                 disabled={loading}
-                className="w-full flex items-center gap-2 p-2.5 rounded-lg border border-zinc-200 text-left text-xs text-zinc-700 hover:bg-violet-50 hover:border-violet-200 hover:text-violet-700 transition-all disabled:opacity-50"
+                className="w-full flex items-center gap-2 p-2.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-left text-xs text-zinc-700 dark:text-zinc-300 hover:bg-violet-50 dark:bg-violet-900/30 hover:border-violet-200 hover:text-violet-700 dark:text-violet-300 transition-all disabled:opacity-50"
               >
                 <ChevronRight className="w-3 h-3 flex-shrink-0 text-zinc-400" />
                 {qp.label}
@@ -160,27 +214,46 @@ function ChatTab({ messages, loading, copiedIdx, input, setInput, messagesEndRef
   );
 }
 
+ChatTab.propTypes = {
+  messages: PropTypes.array.isRequired,
+  loading: PropTypes.bool.isRequired,
+  copiedIdx: PropTypes.number,
+  input: PropTypes.string.isRequired,
+  setInput: PropTypes.func.isRequired,
+  messagesEndRef: PropTypes.object,
+  sendMessage: PropTypes.func.isRequired,
+  handleKeyDown: PropTypes.func.isRequired,
+  copyMessage: PropTypes.func.isRequired,
+  setMessages: PropTypes.func.isRequired,
+  conversations: PropTypes.array.isRequired,
+  activeConvId: PropTypes.number,
+  onSelectConversation: PropTypes.func.isRequired,
+  onNewConversation: PropTypes.func.isRequired,
+  onDeleteConversation: PropTypes.func.isRequired,
+  loadingConversations: PropTypes.bool.isRequired,
+};
+
 function CreateWorkflowTab({ wfDescription, setWfDescription, creatingWf, handleCreateWorkflow }) {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div className="bg-white rounded-2xl border border-zinc-200/60 p-8">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/60 dark:border-zinc-700/60 p-8">
         <div className="text-center mb-6">
           <div className="w-16 h-16 bg-gradient-to-br from-violet-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Wand2 className="w-8 h-8 text-violet-600" />
+            <Wand2 className="w-8 h-8 text-violet-600 dark:text-violet-400" />
           </div>
-          <h3 className="text-xl font-bold text-zinc-900">Create Workflow with AI</h3>
-          <p className="text-sm text-zinc-500 mt-1">Describe what you want and AI will build the workflow for you</p>
+          <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Create Workflow with AI</h3>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Describe what you want and AI will build the workflow for you</p>
         </div>
         <div className="space-y-4">
           <div>
-            <label htmlFor="wf-description" className="block text-sm font-medium text-zinc-700 mb-2">Describe your workflow</label>
+            <label htmlFor="wf-description" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Describe your workflow</label>
             <textarea
               id="wf-description"
               value={wfDescription}
               onChange={(e) => setWfDescription(e.target.value)}
               placeholder="e.g., Send a personalized cold email to leads, wait 3 days, check if they replied, if yes mark as converted, if no send a follow-up email..."
               rows={4}
-              className="w-full px-4 py-3 text-sm border border-zinc-200 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none resize-none"
+              className="w-full px-4 py-3 text-sm border border-zinc-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none resize-none"
             />
           </div>
           <button
@@ -196,8 +269,8 @@ function CreateWorkflowTab({ wfDescription, setWfDescription, creatingWf, handle
           </button>
         </div>
       </div>
-      <div className="bg-white rounded-2xl border border-zinc-200/60 p-6">
-        <h4 className="text-sm font-semibold text-zinc-800 mb-4 flex items-center gap-2">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/60 dark:border-zinc-700/60 p-6">
+        <h4 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 mb-4 flex items-center gap-2">
           <GitBranch className="w-4 h-4 text-violet-500" />
           Try These Ideas
         </h4>
@@ -206,9 +279,9 @@ function CreateWorkflowTab({ wfDescription, setWfDescription, creatingWf, handle
             <button
               key={wp.label}
               onClick={() => setWfDescription(wp.label + ': ' + wp.desc)}
-              className="flex flex-col items-start p-4 rounded-xl border border-zinc-200 hover:bg-violet-50 hover:border-violet-200 transition-all text-left"
+              className="flex flex-col items-start p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-violet-50 dark:bg-violet-900/30 hover:border-violet-200 transition-all text-left"
             >
-              <span className="text-sm font-medium text-zinc-800">{wp.label}</span>
+              <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{wp.label}</span>
               <span className="text-xs text-zinc-400 mt-1">{wp.desc}</span>
             </button>
           ))}
@@ -218,21 +291,33 @@ function CreateWorkflowTab({ wfDescription, setWfDescription, creatingWf, handle
   );
 }
 
+CreateWorkflowTab.propTypes = {
+  wfDescription: PropTypes.string.isRequired,
+  setWfDescription: PropTypes.func.isRequired,
+  creatingWf: PropTypes.bool.isRequired,
+  handleCreateWorkflow: PropTypes.func.isRequired,
+};
+
 export default function AIChat() {
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: 'Hi! I\'m FlowReach AI, your intelligent outreach assistant. I can help you:\n\n• **Generate personalized emails** for your leads\n• **Create workflow automations** using natural language\n• **Write follow-up sequences** and templates\n• **Analyze strategies** for your outreach campaigns\n\nHow can I help you today?',
-    },
-  ]);
+  const WELCOME_MSG = {
+    role: 'assistant',
+    content: 'Hi! I\'m FlowReach AI, your intelligent outreach assistant. I can help you:\n\n• **Generate personalized emails** for your leads\n• **Create workflow automations** using natural language\n• **Write follow-up sequences** and templates\n• **Analyze strategies** for your outreach campaigns\n\nHow can I help you today?',
+  };
+
+  const [messages, setMessages] = useState([WELCOME_MSG]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState(null);
-  const [tab, setTab] = useState('chat'); // 'chat' | 'create-workflow' | 'generate'
+  const [tab, setTab] = useState('chat');
   const [wfDescription, setWfDescription] = useState('');
   const [creatingWf, setCreatingWf] = useState(false);
   const messagesEndRef = useRef(null);
   const navigate = useNavigate();
+
+  // Conversation state
+  const [conversations, setConversations] = useState([]);
+  const [activeConvId, setActiveConvId] = useState(null);
+  const [loadingConversations, setLoadingConversations] = useState(true);
 
   // Message Generator State
   const [genForm, setGenForm] = useState({
@@ -264,11 +349,11 @@ export default function AIChat() {
   const [selectAll, setSelectAll] = useState(true);
 
   const CHANNELS = [
-    { id: 'email', label: 'Email', icon: Mail, color: 'blue', bg: 'bg-blue-500', ring: 'ring-blue-300', activeBg: 'bg-blue-50 border-blue-300 text-blue-700' },
-    { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare, color: 'emerald', bg: 'bg-emerald-500', ring: 'ring-emerald-300', activeBg: 'bg-emerald-50 border-emerald-300 text-emerald-700' },
-    { id: 'telegram', label: 'Telegram', icon: Send, color: 'sky', bg: 'bg-sky-500', ring: 'ring-sky-300', activeBg: 'bg-sky-50 border-sky-300 text-sky-700' },
-    { id: 'discord', label: 'Discord', icon: Hash, color: 'indigo', bg: 'bg-indigo-500', ring: 'ring-indigo-300', activeBg: 'bg-indigo-50 border-indigo-300 text-indigo-700' },
-    { id: 'slack', label: 'Slack', icon: MessageSquare, color: 'green', bg: 'bg-green-600', ring: 'ring-green-300', activeBg: 'bg-green-50 border-green-300 text-green-700' },
+    { id: 'email', label: 'Email', icon: Mail, color: 'blue', bg: 'bg-blue-500', ring: 'ring-blue-300', activeBg: 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 text-blue-700 dark:text-blue-300' },
+    { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare, color: 'emerald', bg: 'bg-emerald-500', ring: 'ring-emerald-300', activeBg: 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-300 text-emerald-700 dark:text-emerald-300' },
+    { id: 'telegram', label: 'Telegram', icon: Send, color: 'sky', bg: 'bg-sky-500', ring: 'ring-sky-300', activeBg: 'bg-sky-50 dark:bg-sky-900/30 border-sky-300 text-sky-700' },
+    { id: 'discord', label: 'Discord', icon: Hash, color: 'indigo', bg: 'bg-indigo-500', ring: 'ring-indigo-300', activeBg: 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 text-indigo-700 dark:text-indigo-300' },
+    { id: 'slack', label: 'Slack', icon: MessageSquare, color: 'green', bg: 'bg-green-600', ring: 'ring-green-300', activeBg: 'bg-green-50 dark:bg-green-900/30 border-green-300 text-green-700 dark:text-green-300' },
   ];
 
   const toggleChannel = (id) => {
@@ -281,8 +366,7 @@ export default function AIChat() {
   useEffect(() => {
     if (bulkMode) {
       setLoadingLeadCount(true);
-      fetch(`${API_BASE}/api/leads?limit=500`)
-        .then(r => r.json())
+      fetchLeadsForSelector(500)
         .then(data => {
           const leads = data.leads || [];
           setAllLeads(leads);
@@ -342,27 +426,21 @@ export default function AIChat() {
     setBulkProgress({ completed: 0, total: leadCount, currentLead: 'Starting...' });
 
     try {
-      const res = await fetch(`${API_BASE}/api/ai/bulk-send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          leadIds: selectAll ? null : selectedLeadIds,
-          channels: selectedChannels,
-          prompt: genForm.prompt,
-          tone: genForm.tone,
-          maxLength: genForm.maxLength,
-          companyName: genForm.companyName,
-          senderName: genForm.senderName,
-          industry: genForm.industry,
-          painPoints: genForm.painPoints,
-          callToAction: genForm.callToAction,
-          signature: genForm.signature,
-          language: genForm.language,
-          messageType: genForm.messageType,
-        }),
+      const data = await bulkSendAIMessages({
+        leadIds: selectAll ? null : selectedLeadIds,
+        channels: selectedChannels,
+        prompt: genForm.prompt,
+        tone: genForm.tone,
+        maxLength: genForm.maxLength,
+        companyName: genForm.companyName,
+        senderName: genForm.senderName,
+        industry: genForm.industry,
+        painPoints: genForm.painPoints,
+        callToAction: genForm.callToAction,
+        signature: genForm.signature,
+        language: genForm.language,
+        messageType: genForm.messageType,
       });
-      if (!res.ok) throw new Error((await res.json()).error || 'Bulk send failed');
-      const data = await res.json();
       setBulkResults(data);
       setBulkProgress({ completed: data.summary.totalLeads, total: data.summary.totalLeads, currentLead: 'Complete' });
       const { totalSent, totalFailed, totalSkipped } = data.summary;
@@ -378,26 +456,20 @@ export default function AIChat() {
     setGenerating(true);
     setGeneratedMsg(null);
     try {
-      const res = await fetch(`${API_BASE}/api/ai/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lead: { name: genForm.recipientName || 'there', email: genForm.recipientEmail, company: genForm.recipientCompany, title: genForm.recipientTitle },
-          prompt: genForm.prompt,
-          tone: genForm.tone,
-          maxLength: genForm.maxLength,
-          companyName: genForm.companyName,
-          senderName: genForm.senderName,
-          industry: genForm.industry,
-          painPoints: genForm.painPoints,
-          callToAction: genForm.callToAction,
-          signature: genForm.signature,
-          language: genForm.language,
-          messageType: genForm.messageType,
-        }),
+      const data = await generateAIMessage({
+        lead: { name: genForm.recipientName || 'there', email: genForm.recipientEmail, company: genForm.recipientCompany, title: genForm.recipientTitle },
+        prompt: genForm.prompt,
+        tone: genForm.tone,
+        maxLength: genForm.maxLength,
+        companyName: genForm.companyName,
+        senderName: genForm.senderName,
+        industry: genForm.industry,
+        painPoints: genForm.painPoints,
+        callToAction: genForm.callToAction,
+        signature: genForm.signature,
+        language: genForm.language,
+        messageType: genForm.messageType,
       });
-      if (!res.ok) throw new Error((await res.json()).error || 'Failed');
-      const data = await res.json();
       setGeneratedMsg(data);
       setSendResults(null);
       toast.success('Message generated!');
@@ -408,13 +480,91 @@ export default function AIChat() {
     }
   };
 
+  // Load conversations on mount
+  useEffect(() => {
+    setLoadingConversations(true);
+    fetchAIConversations()
+      .then(convs => setConversations(convs))
+      .catch(() => setConversations([]))
+      .finally(() => setLoadingConversations(false));
+  }, []);
+
+  const handleNewConversation = useCallback(async () => {
+    try {
+      const conv = await createAIConversation('New Chat');
+      setConversations(prev => [conv, ...prev]);
+      setActiveConvId(conv.id);
+      setMessages([WELCOME_MSG]);
+    } catch (err) {
+      toast.error(err.message);
+    }
+  }, [WELCOME_MSG]);
+
+  const handleSelectConversation = useCallback(async (convId) => {
+    setActiveConvId(convId);
+    setLoading(true);
+    try {
+      const msgs = await fetchConversationMessages(convId);
+      if (msgs.length > 0) {
+        setMessages(msgs.map(m => ({ role: m.role, content: m.content, source: m.source || undefined })));
+      } else {
+        setMessages([WELCOME_MSG]);
+      }
+    } catch {
+      setMessages([WELCOME_MSG]);
+    } finally {
+      setLoading(false);
+    }
+  }, [WELCOME_MSG]);
+
+  const handleDeleteConversation = useCallback(async (convId) => {
+    try {
+      await deleteAIConversation(convId);
+      setConversations(prev => prev.filter(c => c.id !== convId));
+      if (activeConvId === convId) {
+        setActiveConvId(null);
+        setMessages([WELCOME_MSG]);
+      }
+      toast.success('Conversation deleted');
+    } catch (err) {
+      toast.error(err.message);
+    }
+  }, [activeConvId, WELCOME_MSG]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const truncateTitle = (text) => text.length > 40 ? text.substring(0, 40) + '...' : text;
+
+  const updateConvTitle = (convId, title) => {
+    setConversations(prev => prev.map(c => c.id === convId ? { ...c, title } : c));
+  };
+
+  const ensureConversation = async (msg) => {
+    if (activeConvId) {
+      if (messages.length <= 1) {
+        updateAIConversation(activeConvId, truncateTitle(msg))
+          .then(updated => updateConvTitle(activeConvId, updated.title))
+          .catch(() => {});
+      }
+      return activeConvId;
+    }
+    try {
+      const conv = await createAIConversation(truncateTitle(msg));
+      setConversations(prev => [conv, ...prev]);
+      setActiveConvId(conv.id);
+      return conv.id;
+    } catch {
+      return null;
+    }
+  };
+
   const sendMessage = async (text = null) => {
     const msg = text || input.trim();
     if (!msg || loading) return;
+
+    const convId = await ensureConversation(msg);
 
     const userMsg = { role: 'user', content: msg };
     setMessages(prev => [...prev, userMsg]);
@@ -422,7 +572,15 @@ export default function AIChat() {
     setLoading(true);
 
     try {
-      const result = await chatWithAI({ message: msg });
+      const historyForContext = messages
+        .filter(m => m.role === 'user' || (m.role === 'assistant' && !m.error))
+        .map(m => ({ role: m.role, content: m.content }));
+
+      const result = await chatWithAI({
+        message: msg,
+        history: historyForContext,
+        conversationId: convId,
+      });
       setMessages(prev => [...prev, { role: 'assistant', content: result.reply, source: result.source }]);
     } catch (err) {
       setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${err.message}. Please try again.`, error: true }]);
@@ -443,29 +601,23 @@ export default function AIChat() {
     setSending(true);
     setSendResults(null);
     try {
-      const res = await fetch(`${API_BASE}/api/ai/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          channels: selectedChannels,
-          message: {
-            subject: generatedMsg.subject,
-            body: generatedMsg.body,
-          },
-          recipient: {
-            email: genForm.recipientEmail,
-            phone: genForm.recipientPhone || '',
-            whatsapp: genForm.recipientWhatsApp || genForm.recipientPhone || '',
-            telegram: genForm.recipientTelegram || '',
-            chatId: genForm.recipientTelegram || '',
-            discordWebhook: genForm.recipientDiscord || '',
-            slackWebhook: genForm.recipientSlack || '',
-            leadId: null,
-          },
-        }),
+      const data = await sendAIMessageViaChannels({
+        channels: selectedChannels,
+        message: {
+          subject: generatedMsg.subject,
+          body: generatedMsg.body,
+        },
+        recipient: {
+          email: genForm.recipientEmail,
+          phone: genForm.recipientPhone || '',
+          whatsapp: genForm.recipientWhatsApp || genForm.recipientPhone || '',
+          telegram: genForm.recipientTelegram || '',
+          chatId: genForm.recipientTelegram || '',
+          discordWebhook: genForm.recipientDiscord || '',
+          slackWebhook: genForm.recipientSlack || '',
+          leadId: null,
+        },
       });
-      if (!res.ok) throw new Error((await res.json()).error || 'Send failed');
-      const data = await res.json();
       setSendResults(data.results);
       const sentCount = data.results.filter(r => r.status === 'sent').length;
       const loggedCount = data.results.filter(r => r.status === 'logged').length;
@@ -509,18 +661,18 @@ export default function AIChat() {
             <Sparkles className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-zinc-900">AI Assistant</h2>
-            <p className="text-sm text-zinc-500">Chat with AI or create workflows using natural language</p>
+            <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">AI Assistant</h2>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">Chat with AI or create workflows using natural language</p>
           </div>
         </div>
       </div>
 
       {/* Tab Switcher */}
-      <div className="flex gap-1 bg-zinc-100/80 p-1 rounded-xl w-fit">
+      <div className="flex gap-1 bg-zinc-100/80 dark:bg-zinc-800/80 p-1 rounded-xl w-fit">
         <button
           onClick={() => setTab('chat')}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-            tab === 'chat' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'
+            tab === 'chat' ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:text-zinc-300'
           }`}
         >
           <Bot className="w-3.5 h-3.5" />
@@ -529,7 +681,7 @@ export default function AIChat() {
         <button
           onClick={() => setTab('create-workflow')}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-            tab === 'create-workflow' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'
+            tab === 'create-workflow' ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:text-zinc-300'
           }`}
         >
           <Wand2 className="w-3.5 h-3.5" />
@@ -538,7 +690,7 @@ export default function AIChat() {
         <button
           onClick={() => setTab('generate')}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-            tab === 'generate' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'
+            tab === 'generate' ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:text-zinc-300'
           }`}
         >
           <Pen className="w-3.5 h-3.5" />
@@ -553,6 +705,11 @@ export default function AIChat() {
           input={input} setInput={setInput} messagesEndRef={messagesEndRef}
           sendMessage={sendMessage} handleKeyDown={handleKeyDown}
           copyMessage={copyMessage} setMessages={setMessages}
+          conversations={conversations} activeConvId={activeConvId}
+          onSelectConversation={handleSelectConversation}
+          onNewConversation={handleNewConversation}
+          onDeleteConversation={handleDeleteConversation}
+          loadingConversations={loadingConversations}
         />
       )}
 
@@ -569,24 +726,24 @@ export default function AIChat() {
         <div className="flex gap-5 h-[calc(100vh-260px)] min-h-[500px]">
           {/* Form */}
           <div className="flex-1 min-w-0 overflow-y-auto pr-1">
-            <div className="bg-white rounded-2xl border border-zinc-200/60 p-5 space-y-4">
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/60 dark:border-zinc-700/60 p-5 space-y-4">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center">
                   <Pen className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-bold text-zinc-900">AI Message Generator</h3>
-                  <p className="text-xs text-zinc-500">Fill in the details below to generate a personalized message</p>
+                  <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">AI Message Generator</h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Fill in the details below to generate a personalized message</p>
                 </div>
               </div>
 
               {/* Single / Bulk Mode Toggle */}
-              <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-zinc-50 to-zinc-100/50 rounded-xl border border-zinc-200">
-                <div className="flex gap-0.5 bg-white rounded-lg p-0.5 border border-zinc-200 shadow-sm">
+              <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-zinc-50 to-zinc-100/50 rounded-xl border border-zinc-200 dark:border-zinc-700">
+                <div className="flex gap-0.5 bg-white dark:bg-zinc-900 rounded-lg p-0.5 border border-zinc-200 dark:border-zinc-700 shadow-sm">
                   <button
                     onClick={() => { setBulkMode(false); setBulkResults(null); }}
                     className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-md transition-all ${
-                      bulkMode ? 'text-zinc-500 hover:text-zinc-700' : 'bg-indigo-600 text-white shadow-sm'
+                      bulkMode ? 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:text-zinc-300' : 'bg-indigo-600 text-white shadow-sm'
                     }`}
                   >
                     <User className="w-3.5 h-3.5" /> Single
@@ -594,14 +751,14 @@ export default function AIChat() {
                   <button
                     onClick={() => { setBulkMode(true); setSendResults(null); setGeneratedMsg(null); }}
                     className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-md transition-all ${
-                      bulkMode ? 'bg-orange-600 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-700'
+                      bulkMode ? 'bg-orange-600 text-white shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:text-zinc-300'
                     }`}
                   >
                     <Users className="w-3.5 h-3.5" /> Bulk Send
                   </button>
                 </div>
                 {bulkMode && (
-                  <div className="flex items-center gap-1.5 text-xs text-orange-700 bg-orange-50 px-2.5 py-1.5 rounded-lg border border-orange-200">
+                  <div className="flex items-center gap-1.5 text-xs text-orange-700 dark:text-orange-300 bg-orange-50 dark:bg-orange-900/30 px-2.5 py-1.5 rounded-lg border border-orange-200">
                     <Zap className="w-3.5 h-3.5" />
                     {loadingLeadCount ? 'Loading...' : <><span className="font-bold">{selectedLeadIds.length}</span> of <span className="font-bold">{leadCount}</span> leads selected</>}
                   </div>
@@ -612,29 +769,29 @@ export default function AIChat() {
               {!bulkMode && (
               <>
               <div className="p-4 bg-blue-50/60 rounded-xl border border-blue-100 space-y-3">
-                <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wide flex items-center gap-1.5">
+                <h4 className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5" /> Recipient Details
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label htmlFor="gen-recipientName" className="block text-xs font-medium text-zinc-600 mb-1">Recipient Name</label>
+                    <label htmlFor="gen-recipientName" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Recipient Name</label>
                     <input id="gen-recipientName" type="text" value={genForm.recipientName} onChange={(e) => setGenForm(f => ({ ...f, recipientName: e.target.value }))}
-                      placeholder="e.g. Ishita" className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+                      placeholder="e.g. Ishita" className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
                   </div>
                   <div>
-                    <label htmlFor="gen-recipientEmail" className="block text-xs font-medium text-zinc-600 mb-1">Email</label>
+                    <label htmlFor="gen-recipientEmail" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Email</label>
                     <input id="gen-recipientEmail" type="email" value={genForm.recipientEmail} onChange={(e) => setGenForm(f => ({ ...f, recipientEmail: e.target.value }))}
-                      placeholder="e.g. ishita@company.com" className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+                      placeholder="e.g. ishita@company.com" className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
                   </div>
                   <div>
-                    <label htmlFor="gen-recipientCompany" className="block text-xs font-medium text-zinc-600 mb-1">Company</label>
+                    <label htmlFor="gen-recipientCompany" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Company</label>
                     <input id="gen-recipientCompany" type="text" value={genForm.recipientCompany} onChange={(e) => setGenForm(f => ({ ...f, recipientCompany: e.target.value }))}
-                      placeholder="e.g. TechCorp" className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+                      placeholder="e.g. TechCorp" className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
                   </div>
                   <div>
-                    <label htmlFor="gen-recipientTitle" className="block text-xs font-medium text-zinc-600 mb-1">Title / Role</label>
+                    <label htmlFor="gen-recipientTitle" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Title / Role</label>
                     <input id="gen-recipientTitle" type="text" value={genForm.recipientTitle} onChange={(e) => setGenForm(f => ({ ...f, recipientTitle: e.target.value }))}
-                      placeholder="e.g. VP of Marketing" className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+                      placeholder="e.g. VP of Marketing" className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
                   </div>
                 </div>
               </div>
@@ -642,36 +799,36 @@ export default function AIChat() {
               {/* Channel Addresses (shown for selected channels) */}
               {(selectedChannels.includes('whatsapp') || selectedChannels.includes('telegram') || selectedChannels.includes('discord') || selectedChannels.includes('slack')) && (
                 <div className="p-4 bg-emerald-50/60 rounded-xl border border-emerald-100 space-y-3">
-                  <h4 className="text-xs font-semibold text-emerald-700 uppercase tracking-wide flex items-center gap-1.5">
+                  <h4 className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 uppercase tracking-wide flex items-center gap-1.5">
                     <Phone className="w-3.5 h-3.5" /> Channel Addresses
                   </h4>
                   <div className="grid grid-cols-2 gap-3">
                     {(selectedChannels.includes('email') || selectedChannels.includes('whatsapp')) && (
                       <div>
-                        <label htmlFor="gen-recipientPhone" className="block text-xs font-medium text-zinc-600 mb-1">Phone / WhatsApp</label>
+                        <label htmlFor="gen-recipientPhone" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Phone / WhatsApp</label>
                         <input id="gen-recipientPhone" type="text" value={genForm.recipientPhone} onChange={(e) => setGenForm(f => ({ ...f, recipientPhone: e.target.value }))}
-                          placeholder="+1234567890" className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+                          placeholder="+1234567890" className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
                       </div>
                     )}
                     {selectedChannels.includes('telegram') && (
                       <div>
-                        <label htmlFor="gen-recipientTelegram" className="block text-xs font-medium text-zinc-600 mb-1">Telegram Chat ID</label>
+                        <label htmlFor="gen-recipientTelegram" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Telegram Chat ID</label>
                         <input id="gen-recipientTelegram" type="text" value={genForm.recipientTelegram} onChange={(e) => setGenForm(f => ({ ...f, recipientTelegram: e.target.value }))}
-                          placeholder="e.g. 123456789" className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+                          placeholder="e.g. 123456789" className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
                       </div>
                     )}
                     {selectedChannels.includes('discord') && (
                       <div>
-                        <label htmlFor="gen-recipientDiscord" className="block text-xs font-medium text-zinc-600 mb-1">Discord Webhook URL</label>
+                        <label htmlFor="gen-recipientDiscord" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Discord Webhook URL</label>
                         <input id="gen-recipientDiscord" type="text" value={genForm.recipientDiscord} onChange={(e) => setGenForm(f => ({ ...f, recipientDiscord: e.target.value }))}
-                          placeholder="https://discord.com/api/webhooks/..." className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+                          placeholder="https://discord.com/api/webhooks/..." className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
                       </div>
                     )}
                     {selectedChannels.includes('slack') && (
                       <div>
-                        <label htmlFor="gen-recipientSlack" className="block text-xs font-medium text-zinc-600 mb-1">Slack Webhook URL</label>
+                        <label htmlFor="gen-recipientSlack" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Slack Webhook URL</label>
                         <input id="gen-recipientSlack" type="text" value={genForm.recipientSlack} onChange={(e) => setGenForm(f => ({ ...f, recipientSlack: e.target.value }))}
-                          placeholder="https://hooks.slack.com/services/..." className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+                          placeholder="https://hooks.slack.com/services/..." className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
                       </div>
                     )}
                   </div>
@@ -684,10 +841,10 @@ export default function AIChat() {
               {bulkMode && (
                 <div className="p-4 bg-orange-50/60 rounded-xl border border-orange-200 space-y-3">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-semibold text-orange-700 uppercase tracking-wide flex items-center gap-1.5">
+                    <h4 className="text-xs font-semibold text-orange-700 dark:text-orange-300 uppercase tracking-wide flex items-center gap-1.5">
                       <Users className="w-3.5 h-3.5" /> Select Recipients
                     </h4>
-                    <button onClick={toggleSelectAll} className="flex items-center gap-1 text-xs font-medium text-orange-600 hover:text-orange-800 transition-colors">
+                    <button onClick={toggleSelectAll} className="flex items-center gap-1 text-xs font-medium text-orange-600 dark:text-orange-400 hover:text-orange-800 transition-colors">
                       {selectAll ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
                       {selectAll ? 'Deselect All' : 'Select All'}
                     </button>
@@ -699,13 +856,13 @@ export default function AIChat() {
                     <input
                       type="text" value={leadSearch} onChange={e => setLeadSearch(e.target.value)}
                       placeholder="Search leads by name, email, or company..."
-                      className="w-full pl-8 pr-3 py-2 border border-orange-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-orange-400 focus:border-orange-400 outline-none"
+                      className="w-full pl-8 pr-3 py-2 border border-orange-200 rounded-lg text-xs bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-orange-400 focus:border-orange-400 outline-none"
                     />
-                    {leadSearch && <button onClick={() => setLeadSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"><Trash2 className="w-3 h-3" /></button>}
+                    {leadSearch && <button onClick={() => setLeadSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:text-zinc-400"><Trash2 className="w-3 h-3" /></button>}
                   </div>
 
                   {/* Lead List */}
-                  <div className="max-h-48 overflow-y-auto space-y-1 border border-orange-100 rounded-lg bg-white p-1">
+                  <div className="max-h-48 overflow-y-auto space-y-1 border border-orange-100 rounded-lg bg-white dark:bg-zinc-900 p-1">
                     {loadingLeadCount && (
                       <div className="flex items-center justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-orange-400" /></div>
                     )}
@@ -721,12 +878,12 @@ export default function AIChat() {
                             type="button"
                             onClick={() => toggleLeadSelection(lead.id)}
                             className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left transition-all text-xs ${
-                              isSelected ? 'bg-orange-100 border border-orange-300' : 'hover:bg-zinc-50 border border-transparent'
+                              isSelected ? 'bg-orange-100 border border-orange-300' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800 border border-transparent'
                             }`}
                           >
-                            {isSelected ? <CheckSquare className="w-3.5 h-3.5 text-orange-600 flex-shrink-0" /> : <Square className="w-3.5 h-3.5 text-zinc-300 flex-shrink-0" />}
+                            {isSelected ? <CheckSquare className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 flex-shrink-0" /> : <Square className="w-3.5 h-3.5 text-zinc-300 flex-shrink-0" />}
                             <div className="flex-1 min-w-0">
-                              <span className="font-medium text-zinc-800 truncate block">{lead.name}</span>
+                              <span className="font-medium text-zinc-800 dark:text-zinc-200 truncate block">{lead.name}</span>
                               <span className="text-[10px] text-zinc-400 truncate block">{lead.email}{lead.company ? ` · ${lead.company}` : ''}</span>
                             </div>
                             <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${getLeadStatusBadge(lead.status)}`}>{lead.status}</span>
@@ -736,7 +893,7 @@ export default function AIChat() {
                     }
                   </div>
 
-                  <div className="flex items-center justify-between text-[10px] text-orange-600">
+                  <div className="flex items-center justify-between text-[10px] text-orange-600 dark:text-orange-400">
                     <span>{selectedLeadIds.length} of {allLeads.length} leads selected</span>
                     {leadSearch && <span>{filteredPickerLeads.length} matching search</span>}
                   </div>
@@ -745,38 +902,38 @@ export default function AIChat() {
 
               {/* Sender Info */}
               <div className="p-4 bg-indigo-50/60 rounded-xl border border-indigo-100 space-y-3">
-                <h4 className="text-xs font-semibold text-indigo-700 uppercase tracking-wide flex items-center gap-1.5">
+                <h4 className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 uppercase tracking-wide flex items-center gap-1.5">
                   <Building2 className="w-3.5 h-3.5" /> Sender Details
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label htmlFor="gen-senderName" className="block text-xs font-medium text-zinc-600 mb-1">Your Name</label>
+                    <label htmlFor="gen-senderName" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Your Name</label>
                     <input id="gen-senderName" type="text" value={genForm.senderName} onChange={(e) => setGenForm(f => ({ ...f, senderName: e.target.value }))}
-                      placeholder="e.g. Alex Johnson" className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+                      placeholder="e.g. Alex Johnson" className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
                   </div>
                   <div>
-                    <label htmlFor="gen-companyName" className="block text-xs font-medium text-zinc-600 mb-1">Your Company</label>
+                    <label htmlFor="gen-companyName" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Your Company</label>
                     <input id="gen-companyName" type="text" value={genForm.companyName} onChange={(e) => setGenForm(f => ({ ...f, companyName: e.target.value }))}
-                      placeholder="e.g. FlowReach AI" className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+                      placeholder="e.g. FlowReach AI" className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
                   </div>
                 </div>
                 <div>
-                  <label htmlFor="gen-signature" className="block text-xs font-medium text-zinc-600 mb-1">Signature</label>
+                  <label htmlFor="gen-signature" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Signature</label>
                   <textarea id="gen-signature" value={genForm.signature} onChange={(e) => setGenForm(f => ({ ...f, signature: e.target.value }))} rows={2}
-                    placeholder="Best regards,&#10;Alex Johnson, CEO at FlowReach AI" className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none" />
+                    placeholder="Best regards,&#10;Alex Johnson, CEO at FlowReach AI" className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none" />
                 </div>
               </div>
 
               {/* Personalization */}
               <div className="p-4 bg-violet-50/60 rounded-xl border border-violet-100 space-y-3">
-                <h4 className="text-xs font-semibold text-violet-700 uppercase tracking-wide flex items-center gap-1.5">
+                <h4 className="text-xs font-semibold text-violet-700 dark:text-violet-300 uppercase tracking-wide flex items-center gap-1.5">
                   <Target className="w-3.5 h-3.5" /> Personalization
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label htmlFor="gen-messageType" className="block text-xs font-medium text-zinc-600 mb-1">Message Type</label>
+                    <label htmlFor="gen-messageType" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Message Type</label>
                     <select id="gen-messageType" value={genForm.messageType} onChange={(e) => setGenForm(f => ({ ...f, messageType: e.target.value }))}
-                      className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                      className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
                       <option value="outreach_email">Outreach Email</option>
                       <option value="follow_up">Follow-up Email</option>
                       <option value="welcome_email">Welcome Email</option>
@@ -788,9 +945,9 @@ export default function AIChat() {
                     </select>
                   </div>
                   <div>
-                    <label htmlFor="gen-tone" className="block text-xs font-medium text-zinc-600 mb-1">Tone</label>
+                    <label htmlFor="gen-tone" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Tone</label>
                     <select id="gen-tone" value={genForm.tone} onChange={(e) => setGenForm(f => ({ ...f, tone: e.target.value }))}
-                      className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                      className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
                       <option value="professional">Professional</option>
                       <option value="friendly">Friendly & Warm</option>
                       <option value="casual">Casual</option>
@@ -803,14 +960,14 @@ export default function AIChat() {
                     </select>
                   </div>
                   <div>
-                    <label htmlFor="gen-industry" className="block text-xs font-medium text-zinc-600 mb-1">Target Industry</label>
+                    <label htmlFor="gen-industry" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Target Industry</label>
                     <input id="gen-industry" type="text" value={genForm.industry} onChange={(e) => setGenForm(f => ({ ...f, industry: e.target.value }))}
-                      placeholder="e.g. SaaS, Healthcare, FinTech" className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+                      placeholder="e.g. SaaS, Healthcare, FinTech" className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
                   </div>
                   <div>
-                    <label htmlFor="gen-language" className="block text-xs font-medium text-zinc-600 mb-1">Language</label>
+                    <label htmlFor="gen-language" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Language</label>
                     <select id="gen-language" value={genForm.language} onChange={(e) => setGenForm(f => ({ ...f, language: e.target.value }))}
-                      className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                      className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
                       <option value="English">English</option>
                       <option value="Spanish">Spanish</option>
                       <option value="French">French</option>
@@ -822,34 +979,34 @@ export default function AIChat() {
                   </div>
                 </div>
                 <div>
-                  <label htmlFor="gen-painPoints" className="block text-xs font-medium text-zinc-600 mb-1">Pain Points to Address</label>
+                  <label htmlFor="gen-painPoints" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Pain Points to Address</label>
                   <textarea id="gen-painPoints" value={genForm.painPoints} onChange={(e) => setGenForm(f => ({ ...f, painPoints: e.target.value }))} rows={2}
-                    placeholder="e.g. Manual outreach is slow, low response rates, no personalization at scale" className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none" />
+                    placeholder="e.g. Manual outreach is slow, low response rates, no personalization at scale" className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none" />
                 </div>
                 <div>
-                  <label htmlFor="gen-cta" className="block text-xs font-medium text-zinc-600 mb-1">Call to Action</label>
+                  <label htmlFor="gen-cta" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Call to Action</label>
                   <input id="gen-cta" type="text" value={genForm.callToAction} onChange={(e) => setGenForm(f => ({ ...f, callToAction: e.target.value }))}
-                    placeholder="e.g. Book a 15-min demo call" className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+                    placeholder="e.g. Book a 15-min demo call" className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
                 </div>
               </div>
 
               {/* Prompt */}
               <div>
-                <label htmlFor="gen-prompt" className="block text-xs font-medium text-zinc-600 mb-1">Prompt Template</label>
+                <label htmlFor="gen-prompt" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Prompt Template</label>
                 <textarea id="gen-prompt" value={genForm.prompt} onChange={(e) => setGenForm(f => ({ ...f, prompt: e.target.value }))} rows={3}
-                  placeholder="Write a personalized email to {{name}} at {{company}}..." className="w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none" />
+                  placeholder="Write a personalized email to {{name}} at {{company}}..." className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none" />
                 <p className="mt-1 text-xs text-zinc-400">Variables: {'{{name}}'}, {'{{email}}'}, {'{{company}}'}, {'{{title}}'}</p>
               </div>
 
               <div>
-                <label htmlFor="gen-maxLength" className="block text-xs font-medium text-zinc-600 mb-1">Max Length (words)</label>
+                <label htmlFor="gen-maxLength" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Max Length (words)</label>
                 <input id="gen-maxLength" type="number" value={genForm.maxLength} onChange={(e) => setGenForm(f => ({ ...f, maxLength: Number(e.target.value) }))}
-                  min={50} max={500} className="w-32 px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+                  min={50} max={500} className="w-32 px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
               </div>
 
               {/* Channel Selector */}
-              <div className="p-4 bg-gradient-to-r from-zinc-50 to-zinc-100/50 rounded-xl border border-zinc-200 space-y-3">
-                <h4 className="text-xs font-semibold text-zinc-700 uppercase tracking-wide">Send Via (select channels)</h4>
+              <div className="p-4 bg-gradient-to-r from-zinc-50 to-zinc-100/50 rounded-xl border border-zinc-200 dark:border-zinc-700 space-y-3">
+                <h4 className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wide">Send Via (select channels)</h4>
                 <div className="flex flex-wrap gap-2">
                   {CHANNELS.map(ch => {
                     const active = selectedChannels.includes(ch.id);
@@ -862,7 +1019,7 @@ export default function AIChat() {
                         className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition-all duration-200 ${
                           active
                             ? `${ch.activeBg} border-current shadow-sm`
-                            : 'bg-white border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:text-zinc-700'
+                            : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:border-zinc-300 dark:border-zinc-600 hover:text-zinc-700 dark:text-zinc-300'
                         }`}
                       >
                         <ChIcon className="w-3.5 h-3.5" />
@@ -915,7 +1072,7 @@ export default function AIChat() {
                           style={{ width: `${bulkProgress.total ? (bulkProgress.completed / bulkProgress.total) * 100 : 0}%` }}
                         />
                       </div>
-                      <p className="text-xs text-zinc-500 text-center">
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center">
                         Processing: {bulkProgress.currentLead} ({bulkProgress.completed}/{bulkProgress.total})
                       </p>
                     </div>
@@ -927,11 +1084,11 @@ export default function AIChat() {
 
           {/* Generated Output / Bulk Results */}
           <div className="w-[380px] flex-shrink-0">
-            <div className="bg-white rounded-2xl border border-zinc-200/60 h-full flex flex-col">
-              <div className={`p-4 border-b border-zinc-200 rounded-t-2xl ${
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/60 dark:border-zinc-700/60 h-full flex flex-col">
+              <div className={`p-4 border-b border-zinc-200 dark:border-zinc-700 rounded-t-2xl ${
                 bulkMode ? 'bg-gradient-to-r from-orange-50 to-amber-50' : 'bg-gradient-to-r from-indigo-50 to-violet-50'
               }`}>
-                <h4 className="text-sm font-semibold text-zinc-800 flex items-center gap-2">
+                <h4 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
                   {bulkMode ? (
                     <><Users className="w-4 h-4 text-orange-500" /> Bulk Send Results</>
                   ) : (
@@ -956,7 +1113,7 @@ export default function AIChat() {
                     {bulkSending && (
                       <div className="flex flex-col items-center justify-center h-full text-zinc-400">
                         <Loader2 className="w-10 h-10 animate-spin mb-3 text-orange-500" />
-                        <p className="text-sm font-medium text-zinc-700">Sending to all leads...</p>
+                        <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Sending to all leads...</p>
                         <p className="text-xs mt-1">{bulkProgress.currentLead}</p>
                         <div className="w-full mt-4 bg-zinc-200 rounded-full h-3 overflow-hidden">
                           <div
@@ -964,7 +1121,7 @@ export default function AIChat() {
                             style={{ width: `${bulkProgress.total ? (bulkProgress.completed / bulkProgress.total) * 100 : 5}%` }}
                           />
                         </div>
-                        <p className="text-xs mt-2 text-zinc-500">{bulkProgress.completed} of {bulkProgress.total} leads</p>
+                        <p className="text-xs mt-2 text-zinc-500 dark:text-zinc-400">{bulkProgress.completed} of {bulkProgress.total} leads</p>
                       </div>
                     )}
 
@@ -972,32 +1129,32 @@ export default function AIChat() {
                       <div className="space-y-4">
                         {/* Summary Cards */}
                         <div className="grid grid-cols-3 gap-2">
-                          <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
-                            <p className="text-xl font-bold text-emerald-700">{bulkResults.summary.totalSent}</p>
-                            <p className="text-[10px] text-emerald-600 font-medium">Sent</p>
+                          <div className="p-3 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl border border-emerald-200 dark:border-emerald-800 text-center">
+                            <p className="text-xl font-bold text-emerald-700 dark:text-emerald-300">{bulkResults.summary.totalSent}</p>
+                            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">Sent</p>
                           </div>
-                          <div className="p-3 bg-red-50 rounded-xl border border-red-200 text-center">
-                            <p className="text-xl font-bold text-red-700">{bulkResults.summary.totalFailed}</p>
-                            <p className="text-[10px] text-red-600 font-medium">Failed</p>
+                          <div className="p-3 bg-red-50 dark:bg-red-900/30 rounded-xl border border-red-200 dark:border-red-800 text-center">
+                            <p className="text-xl font-bold text-red-700 dark:text-red-300">{bulkResults.summary.totalFailed}</p>
+                            <p className="text-[10px] text-red-600 dark:text-red-400 font-medium">Failed</p>
                           </div>
-                          <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200 text-center">
-                            <p className="text-xl font-bold text-zinc-700">{bulkResults.summary.totalSkipped}</p>
-                            <p className="text-[10px] text-zinc-600 font-medium">Skipped</p>
+                          <div className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 text-center">
+                            <p className="text-xl font-bold text-zinc-700 dark:text-zinc-300">{bulkResults.summary.totalSkipped}</p>
+                            <p className="text-[10px] text-zinc-600 dark:text-zinc-400 font-medium">Skipped</p>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 text-xs text-zinc-500">
+                        <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
                           <Users className="w-3.5 h-3.5" />
                           <span>{bulkResults.summary.totalLeads} leads processed via {selectedChannels.length} channel(s)</span>
                         </div>
 
                         {/* Per-Lead Results */}
-                        <div className="border-t border-zinc-200 pt-3 space-y-2 max-h-[400px] overflow-y-auto">
-                          <h5 className="text-xs font-semibold text-zinc-600 uppercase tracking-wide sticky top-0 bg-white pb-1">Per-Lead Results</h5>
+                        <div className="border-t border-zinc-200 dark:border-zinc-700 pt-3 space-y-2 max-h-[400px] overflow-y-auto">
+                          <h5 className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wide sticky top-0 bg-white dark:bg-zinc-900 pb-1">Per-Lead Results</h5>
                           {bulkResults.results.map((lr, i) => (
-                            <div key={`bulk-${lr.leadId || i}`} className="p-3 bg-zinc-50 rounded-lg border border-zinc-200 space-y-1.5">
+                            <div key={`bulk-${lr.leadId || i}`} className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 space-y-1.5">
                               <div className="flex items-center justify-between">
-                                <span className="text-xs font-semibold text-zinc-800">{lr.name || 'Unknown'}</span>
+                                <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">{lr.name || 'Unknown'}</span>
                                 <span className="text-[10px] text-zinc-400">{lr.email}</span>
                               </div>
                               {lr.company && <span className="text-[10px] text-zinc-400">{lr.company}</span>}
@@ -1020,13 +1177,13 @@ export default function AIChat() {
                         <div className="flex gap-2">
                           <button
                             onClick={exportBulkResults}
-                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors"
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:bg-emerald-900/40 rounded-lg transition-colors"
                           >
                             <Download className="w-3.5 h-3.5" /> Export CSV
                           </button>
                           <button
                             onClick={() => { setBulkResults(null); }}
-                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors"
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-orange-700 dark:text-orange-300 bg-orange-50 dark:bg-orange-900/30 hover:bg-orange-100 rounded-lg transition-colors"
                           >
                             <RefreshCw className="w-3.5 h-3.5" /> Send Again
                           </button>
@@ -1058,7 +1215,7 @@ export default function AIChat() {
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <span className={`px-2.5 py-1 rounded-full text-[10px] font-medium ${
-                            generatedMsg.source === 'groq' ? 'bg-violet-100 text-violet-700' : 'bg-amber-100 text-amber-700'
+                            generatedMsg.source === 'groq' ? 'bg-violet-100 text-violet-700 dark:text-violet-300' : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
                           }`}>
                             {generatedMsg.source === 'groq' ? `Groq AI • ${generatedMsg.model || 'llama-3.3-70b'}` : 'Mock Data'}
                           </span>
@@ -1067,18 +1224,18 @@ export default function AIChat() {
                               navigator.clipboard.writeText(`Subject: ${generatedMsg.subject}\n\n${generatedMsg.body}`);
                               toast.success('Copied to clipboard!');
                             }}
-                            className="flex items-center gap-1 px-2 py-1 text-xs text-zinc-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+                            className="flex items-center gap-1 px-2 py-1 text-xs text-zinc-500 dark:text-zinc-400 hover:text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:bg-indigo-900/30 rounded-md transition-colors"
                           >
                             <Copy className="w-3 h-3" /> Copy
                           </button>
                         </div>
 
-                        <div className="p-4 bg-gradient-to-br from-zinc-50 to-zinc-100/50 rounded-xl border border-zinc-200">
-                          <div className="flex items-center gap-2 mb-3 pb-3 border-b border-zinc-200">
+                        <div className="p-4 bg-gradient-to-br from-zinc-50 to-zinc-100/50 rounded-xl border border-zinc-200 dark:border-zinc-700">
+                          <div className="flex items-center gap-2 mb-3 pb-3 border-b border-zinc-200 dark:border-zinc-700">
                             <Mail className="w-4 h-4 text-blue-500" />
-                            <span className="text-sm font-semibold text-zinc-800">{generatedMsg.subject}</span>
+                            <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">{generatedMsg.subject}</span>
                           </div>
-                          <div className="text-sm text-zinc-700 whitespace-pre-line leading-relaxed">
+                          <div className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-line leading-relaxed">
                             {generatedMsg.body}
                           </div>
                         </div>
@@ -1094,14 +1251,14 @@ export default function AIChat() {
 
                         <button
                           onClick={handleGenerate}
-                          className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+                          className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:bg-indigo-900/40 rounded-lg transition-colors"
                         >
                           <RefreshCw className="w-3.5 h-3.5" /> Regenerate
                         </button>
 
                         {/* Send via Channels */}
-                        <div className="border-t border-zinc-200 pt-4 space-y-3">
-                          <h5 className="text-xs font-semibold text-zinc-600 uppercase tracking-wide">Send via selected channels</h5>
+                        <div className="border-t border-zinc-200 dark:border-zinc-700 pt-4 space-y-3">
+                          <h5 className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wide">Send via selected channels</h5>
                           <div className="flex flex-wrap gap-1.5">
                             {CHANNELS.map(ch => {
                               const active = selectedChannels.includes(ch.id);
@@ -1114,7 +1271,7 @@ export default function AIChat() {
                                   className={`flex items-center gap-1 px-2 py-1.5 text-[11px] font-medium rounded-md border transition-all ${
                                     active
                                       ? `${ch.activeBg} border-current`
-                                      : 'bg-white border-zinc-200 text-zinc-400 hover:text-zinc-600'
+                                      : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-zinc-600 dark:text-zinc-400'
                                   }`}
                                 >
                                   <ChIcon className="w-3 h-3" />

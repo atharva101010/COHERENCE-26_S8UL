@@ -69,27 +69,27 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
     onUpdate(node.id, { ...node.data, [key]: value });
   };
 
-  const inputClass = "w-full px-3 py-2 border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none";
-  const labelClass = "block text-sm font-medium text-zinc-700 mb-1";
+  const inputClass = "w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none";
+  const labelClass = "block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1";
 
   const credsByType = (type) => credentials.filter(c => c.type === type);
 
   return (
-    <div className="w-80 bg-white border-l border-zinc-200 h-full overflow-y-auto shadow-lg">
+    <div className="w-80 bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-700 h-full overflow-y-auto shadow-lg">
       {/* Header */}
-      <div className={`p-4 bg-gradient-to-r ${config.headerBg} border-b border-zinc-200`}>
+      <div className={`p-4 bg-gradient-to-r ${config.headerBg} border-b border-zinc-200 dark:border-zinc-700`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className={`w-8 h-8 rounded-lg ${config.bgClass} flex items-center justify-center`}>
               <Icon className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h3 className="font-semibold text-zinc-900">{config.label}</h3>
-              <p className="text-xs text-zinc-500">ID: {node.id}</p>
+              <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">{config.label}</h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">ID: {node.id}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-zinc-200 rounded-lg transition-colors">
-            <X className="w-4 h-4 text-zinc-500" />
+            <X className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
           </button>
         </div>
       </div>
@@ -135,7 +135,7 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
 
             {/* Sender Info */}
             <div className="p-3 bg-indigo-50/60 rounded-xl border border-indigo-100 space-y-3">
-              <h4 className="text-xs font-semibold text-indigo-700 uppercase tracking-wide">Sender Details</h4>
+              <h4 className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 uppercase tracking-wide">Sender Details</h4>
               <div>
                 <label htmlFor="ai-senderName" className={labelClass}>Your Name</label>
                 <input id="ai-senderName" type="text" value={node.data.senderName || ''} onChange={(e) => updateData('senderName', e.target.value)} placeholder="e.g. Alex Johnson" className={inputClass} />
@@ -153,7 +153,7 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
 
             {/* Personalization */}
             <div className="p-3 bg-violet-50/60 rounded-xl border border-violet-100 space-y-3">
-              <h4 className="text-xs font-semibold text-violet-700 uppercase tracking-wide">Personalization</h4>
+              <h4 className="text-xs font-semibold text-violet-700 dark:text-violet-300 uppercase tracking-wide">Personalization</h4>
               <div>
                 <label htmlFor="ai-industry" className={labelClass}>Target Industry</label>
                 <input id="ai-industry" type="text" value={node.data.industry || ''} onChange={(e) => updateData('industry', e.target.value)} placeholder="e.g. SaaS, Healthcare, FinTech" className={inputClass} />
@@ -302,8 +302,8 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
                 <input id="cond-value" type="text" value={node.data.value || ''} onChange={(e) => updateData('value', e.target.value)} placeholder="Enter value..." className={inputClass} />
               )}
             </div>
-            <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
-              <p className="text-xs text-orange-700"><strong>Yes (left):</strong> Condition true<br /><strong>No (right):</strong> Condition false</p>
+            <div className="p-3 bg-orange-50 dark:bg-orange-900/30 border border-orange-200 rounded-lg">
+              <p className="text-xs text-orange-700 dark:text-orange-300"><strong>Yes (left):</strong> Condition true<br /><strong>No (right):</strong> Condition false</p>
             </div>
           </>
         )}
@@ -325,8 +325,8 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
 
         {/* ===== END NODE ===== */}
         {node.type === 'endNode' && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-xs text-red-700">This is the terminal node. The workflow ends here.</p>
+          <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
+            <p className="text-xs text-red-700 dark:text-red-300">This is the terminal node. The workflow ends here.</p>
           </div>
         )}
 
@@ -446,7 +446,7 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
                 className="w-full accent-purple-500" />
               <div className="flex justify-between text-xs text-zinc-400">
                 <span>Precise (0)</span>
-                <span className="font-medium text-purple-600">{node.data.temperature ?? 0.7}</span>
+                <span className="font-medium text-purple-600 dark:text-purple-400">{node.data.temperature ?? 0.7}</span>
                 <span>Creative (2)</span>
               </div>
             </div>
@@ -506,8 +506,8 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }) {
               <label htmlFor="filter-value" className={labelClass}>Value</label>
               <input id="filter-value" type="text" value={node.data.filterValue || ''} onChange={(e) => updateData('filterValue', e.target.value)} placeholder="Filter value..." className={inputClass} />
             </div>
-            <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
-              <p className="text-xs text-indigo-700"><strong>Match (left):</strong> Passes filter<br /><strong>No Match (right):</strong> Does not pass</p>
+            <div className="p-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 rounded-lg">
+              <p className="text-xs text-indigo-700 dark:text-indigo-300"><strong>Match (left):</strong> Passes filter<br /><strong>No Match (right):</strong> Does not pass</p>
             </div>
           </>
         )}
