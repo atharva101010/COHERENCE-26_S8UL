@@ -5,7 +5,7 @@ const router = Router();
 
 // Default profile object
 const DEFAULT_PROFILE = {
-  id: null,
+  id: 1,
   full_name: 'User',
   email: '',
   phone: '',
@@ -18,6 +18,9 @@ const DEFAULT_PROFILE = {
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 };
+
+// In-memory fallback store (persists for server lifetime when Supabase table is missing)
+let memoryProfile = { ...DEFAULT_PROFILE };
 
 // Try to ensure profiles table exists
 async function ensureProfilesTable() {
@@ -54,7 +57,7 @@ router.get('/', async (req, res) => {
       profilesTableReady = await ensureProfilesTable();
     }
     if (!profilesTableReady) {
-      return res.json(DEFAULT_PROFILE);
+      return res.json(memoryProfile);
     }
 
     const { data, error } = await supabase
@@ -64,14 +67,13 @@ router.get('/', async (req, res) => {
       .single();
 
     if (error && (error.code === 'PGRST116' || error.message?.includes('profiles'))) {
-      return res.json(DEFAULT_PROFILE);
+      return res.json(memoryProfile);
     }
     if (error) throw error;
     res.json(data);
   } catch (err) {
-    // If table doesn't exist, return default gracefully
     if (err.message?.includes('profiles')) {
-      return res.json(DEFAULT_PROFILE);
+      return res.json(memoryProfile);
     }
     res.status(500).json({ error: err.message });
   }
@@ -84,7 +86,8 @@ router.put('/', async (req, res) => {
       profilesTableReady = await ensureProfilesTable();
     }
     if (!profilesTableReady) {
-      return res.json({ ...DEFAULT_PROFILE, ...req.body, updated_at: new Date().toISOString() });
+      memoryProfile = { ...memoryProfile, ...req.body, updated_at: new Date().toISOString() };
+      return res.json(memoryProfile);
     }
 
     const { full_name, email, phone, company, job_title, bio, avatar_url, timezone } = req.body;
@@ -132,7 +135,8 @@ router.put('/', async (req, res) => {
     res.json(result);
   } catch (err) {
     if (err.message?.includes('profiles')) {
-      return res.json({ ...DEFAULT_PROFILE, ...req.body, updated_at: new Date().toISOString() });
+      memoryProfile = { ...memoryProfile, ...req.body, updated_at: new Date().toISOString() };
+      return res.json(memoryProfile);
     }
     res.status(500).json({ error: err.message });
   }
@@ -182,6 +186,9 @@ router.post('/avatar', async (req, res) => {
           .eq('id', existing.id);
       }
     }
+    // Also update memory fallback
+    memoryProfile.avatar_url = avatarUrl;
+    memoryProfile.updated_at = new Date().toISOString();
 
     res.json({ avatar_url: avatarUrl });
   } catch (err) {

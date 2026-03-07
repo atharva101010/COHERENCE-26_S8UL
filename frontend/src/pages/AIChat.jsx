@@ -349,7 +349,6 @@ export default function AIChat() {
 
   const CHANNELS = [
     { id: 'email', label: 'Email', icon: Mail, color: 'blue', bg: 'bg-blue-500', ring: 'ring-blue-300', activeBg: 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 text-blue-700 dark:text-blue-300' },
-    { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare, color: 'emerald', bg: 'bg-emerald-500', ring: 'ring-emerald-300', activeBg: 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-300 text-emerald-700 dark:text-emerald-300' },
     { id: 'telegram', label: 'Telegram', icon: Send, color: 'sky', bg: 'bg-sky-500', ring: 'ring-sky-300', activeBg: 'bg-sky-50 dark:bg-sky-900/30 border-sky-300 text-sky-700' },
     { id: 'discord', label: 'Discord', icon: Hash, color: 'indigo', bg: 'bg-indigo-500', ring: 'ring-indigo-300', activeBg: 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 text-indigo-700 dark:text-indigo-300' },
     { id: 'slack', label: 'Slack', icon: MessageSquare, color: 'green', bg: 'bg-green-600', ring: 'ring-green-300', activeBg: 'bg-green-50 dark:bg-green-900/30 border-green-300 text-green-700 dark:text-green-300' },
@@ -592,6 +591,10 @@ export default function AIChat() {
 
   const handleSendViaChannels = async () => {
     if (!generatedMsg || selectedChannels.length === 0 || sending) return;
+    if (selectedChannels.includes('email') && !genForm.recipientEmail?.trim()) {
+      toast.error('Please enter the recipient email address');
+      return;
+    }
     setSending(true);
     setSendResults(null);
     try {
