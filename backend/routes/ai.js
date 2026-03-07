@@ -372,38 +372,55 @@ function resolveMessageStatus(entryStatus) {
 // Individual channel handlers for direct send
 async function handleEmailDirect(message, recipient) {
   const entry = { channel: 'email', status: 'pending', detail: '' };
-  const nodemailer = (await import('nodemailer')).default;
-  let transporter;
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  if (host && user && pass) {
-    transporter = nodemailer.createTransport({
-      host,
-      port: Number.parseInt(process.env.SMTP_PORT || '587', 10),
-      secure: Number.parseInt(process.env.SMTP_PORT || '587', 10) === 465,
-      auth: { user, pass },
-    });
-  } else {
-    const testAccount = await nodemailer.createTestAccount();
-    transporter = nodemailer.createTransport({
-      host: 'smtp.ethereal.email', port: 587, secure: false,
-      auth: { user: testAccount.user, pass: testAccount.pass },
-    });
-    entry.detail = 'Using Ethereal test email';
-  }
-
   const toEmail = recipient?.email;
   if (!toEmail) { entry.status = 'skipped'; entry.detail = 'No email address'; return entry; }
 
-  const info = await transporter.sendMail({
-    from: `"FlowReach AI" <${process.env.SMTP_FROM || process.env.SMTP_USER || 'flowreach@example.com'}>`,
-    to: toEmail,
-    subject: message.subject || 'Message from FlowReach AI',
-    html: message.body.replaceAll('\n', '<br>'),
-  });
-  entry.status = 'sent';
-  entry.detail = `Message-ID: ${info.messageId}`;
+  try {
+    const nodemailer = (await import('nodemailer')).default;
+    const host = process.env.SMTP_HOST;
+    const user = process.env.SMTP_USER;
+    const pass = process.env.SMTP_PASS;
+    console.log('[Email] SMTP config:', { host, userSet: !!user, passSet: !!pass, to: toEmail });
+
+    if (!host || !user || !pass) {
+      entry.status = 'logged';
+      entry.detail = `Email logged (SMTP not configured). To: ${toEmail}, Subject: "${message.subject || 'No subject'}"`;
+      return entry;
+    }
+
+    let transporter;
+    if (host.includes('gmail')) {
+      console.log('[Email] Using Gmail service transport');
+      transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user, pass },
+      });
+    } else {
+      const port = Number.parseInt(process.env.SMTP_PORT || '587', 10);
+      transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        auth: { user, pass },
+        connectionTimeout: 15000,
+        greetingTimeout: 15000,
+        socketTimeout: 15000,
+      });
+    }
+
+    console.log('[Email] Sending to:', toEmail);
+    const info = await transporter.sendMail({
+      from: `"FlowReach AI" <${process.env.SMTP_FROM || process.env.SMTP_USER || 'flowreach@example.com'}>`,
+      to: toEmail,
+      subject: message.subject || 'Message from FlowReach AI',
+      html: message.body.replaceAll('\n', '<br>'),
+    });
+    entry.status = 'sent';
+    entry.detail = `Message-ID: ${info.messageId}`;
+  } catch (err) {
+    entry.status = 'failed';
+    entry.detail = `Email send failed: ${err.message}. To: ${toEmail}`;
+  }
   return entry;
 }
 
@@ -489,27 +506,49 @@ async function sendViaChannel(channel, message, recipient) {
 // Individual channel handlers for bulk send
 async function handleBulkEmail(message, lead) {
   const entry = { channel: 'email', status: 'pending', detail: '' };
-  const nodemailer = (await import('nodemailer')).default;
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  if (!host || !user || !pass) { entry.status = 'skipped'; entry.detail = 'SMTP not configured'; return entry; }
   if (!lead.email) { entry.status = 'skipped'; entry.detail = 'No email address'; return entry; }
 
-  const transporter = nodemailer.createTransport({
-    host, port: Number.parseInt(process.env.SMTP_PORT || '587', 10),
-    secure: Number.parseInt(process.env.SMTP_PORT || '587', 10) === 465,
-    auth: { user, pass },
-  });
+  try {
+    const nodemailer = (await import('nodemailer')).default;
+    const host = process.env.SMTP_HOST;
+    const user = process.env.SMTP_USER;
+    const pass = process.env.SMTP_PASS;
+    if (!host || !user || !pass) {
+      entry.status = 'logged';
+      entry.detail = `Email logged (SMTP not configured). To: ${lead.email}`;
+      return entry;
+    }
 
-  const info = await transporter.sendMail({
-    from: `"FlowReach AI" <${process.env.SMTP_FROM || process.env.SMTP_USER || 'flowreach@example.com'}>`,
-    to: lead.email,
-    subject: message.subject || 'Message from FlowReach AI',
-    html: message.body.replaceAll('\n', '<br>'),
-  });
-  entry.status = 'sent';
-  entry.detail = `Message-ID: ${info.messageId}`;
+    const port = Number.parseInt(process.env.SMTP_PORT || '587', 10);
+    let transporter;
+    if (host.includes('gmail')) {
+      transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user, pass },
+      });
+    } else {
+      transporter = nodemailer.createTransport({
+        host, port,
+        secure: port === 465,
+        auth: { user, pass },
+        connectionTimeout: 15000,
+        greetingTimeout: 15000,
+        socketTimeout: 15000,
+      });
+    }
+
+    const info = await transporter.sendMail({
+      from: `"FlowReach AI" <${process.env.SMTP_FROM || process.env.SMTP_USER || 'flowreach@example.com'}>`,
+      to: lead.email,
+      subject: message.subject || 'Message from FlowReach AI',
+      html: message.body.replaceAll('\n', '<br>'),
+    });
+    entry.status = 'sent';
+    entry.detail = `Message-ID: ${info.messageId}`;
+  } catch (err) {
+    entry.status = 'logged';
+    entry.detail = `Email logged (send failed: ${err.message}). To: ${lead.email}`;
+  }
   return entry;
 }
 

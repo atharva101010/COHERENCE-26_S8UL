@@ -12,10 +12,14 @@ export default function LeadEnrichment() {
   const [enriching, setEnriching] = useState(false);
   const [search, setSearch] = useState('');
 
+  const [totalLeads, setTotalLeads] = useState(0);
+
   const load = async () => {
     try {
-      const { data } = await axios.get(`${API}/api/leads`);
-      setLeads(Array.isArray(data) ? data : data.leads || []);
+      const { data } = await axios.get(`${API}/api/leads?limit=10000`);
+      const list = Array.isArray(data) ? data : data.leads || [];
+      setLeads(list);
+      setTotalLeads(data.total ?? list.length);
     } catch { toast.error('Failed to load leads'); }
     setLoading(false);
   };
@@ -64,7 +68,7 @@ export default function LeadEnrichment() {
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground">Total Leads</p>
-          <p className="text-2xl font-bold mt-1">{leads.length}</p>
+          <p className="text-2xl font-bold mt-1">{totalLeads}</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground">Enriched</p>
@@ -72,7 +76,7 @@ export default function LeadEnrichment() {
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground">Not Enriched</p>
-          <p className="text-2xl font-bold mt-1 text-amber-600 dark:text-amber-400">{leads.length - enrichedCount}</p>
+          <p className="text-2xl font-bold mt-1 text-amber-600 dark:text-amber-400">{totalLeads - enrichedCount}</p>
         </div>
       </div>
 

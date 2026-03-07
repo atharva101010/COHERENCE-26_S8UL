@@ -1351,7 +1351,7 @@ export async function generateAITemplate({ category, tone }) {
 // ──────────────────────────────────────────────
 
 export async function fetchLeadsForScoring() {
-  const res = await fetch(`${API_BASE}/api/leads`);
+  const res = await fetch(`${API_BASE}/api/leads?limit=10000`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Failed to fetch leads' }));
     throw new Error(err.error || 'Failed to fetch leads');

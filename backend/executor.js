@@ -242,13 +242,14 @@ export class WorkflowExecutor {
 
   async handleEmail(node) {
     const { subject, fromName } = node.data || {};
-    const msg = this.context.generatedMessage;
+    let msg = this.context.generatedMessage;
 
     if (!msg) {
       this.log('warn', 'No AI-generated message available — generating default');
       await this.handleAIGenerate({
         data: { prompt: 'Write a professional email to {{name}} at {{company}}.', tone: 'professional', maxLength: 200 },
       });
+      msg = this.context.generatedMessage;
     }
 
     const finalSubject = replaceVariables(subject || msg?.subject || 'Hello from FlowReach AI', this.context.lead);
@@ -370,13 +371,18 @@ export class WorkflowExecutor {
     const pass = process.env.SMTP_PASS;
 
     if (host && user && pass) {
+      if (host.includes('gmail')) {
+        return nodemailer.createTransport({
+          service: 'gmail',
+          auth: { user, pass },
+        });
+      }
       return nodemailer.createTransport({
         host,
         port,
         secure: port === 465,
         auth: { user, pass },
         tls: { rejectUnauthorized: false },
-        ...(host.includes('gmail') ? { service: 'gmail' } : {}),
       });
     }
 

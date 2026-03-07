@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
-import { X, Sparkles, Mail, User, Building2, Loader2, RefreshCw, Copy, Check, AlertTriangle } from 'lucide-react';
+import { X, Sparkles, Mail, User, Building2, Loader2, RefreshCw, Copy, Check, AlertTriangle, Send, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
@@ -8,6 +8,8 @@ const API_BASE = import.meta.env.VITE_API_URL || '';
 export default function AIPreviewModal({ isOpen, onClose, nodeData }) {
   const [previews, setPreviews] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [sendingId, setSendingId] = useState(null);
+  const [sentIds, setSentIds] = useState(new Set());
   const [source, setSource] = useState('');
   const [copiedId, setCopiedId] = useState(null);
   const [error, setError] = useState('');
@@ -65,6 +67,41 @@ export default function AIPreviewModal({ isOpen, onClose, nodeData }) {
       toast.success('Copied to clipboard');
       setTimeout(() => setCopiedId(null), 2000);
     });
+  };
+
+  const handleSendEmail = async (preview) => {
+    if (!preview.lead?.email) {
+      toast.error('No email address available for this lead');
+      return;
+    }
+    setSendingId(preview.id);
+    try {
+      const res = await fetch(`${API_BASE}/api/ai/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channels: ['email'],
+          message: { subject: preview.subject, body: preview.body },
+          recipient: { email: preview.lead.email, leadId: preview.lead?.id || null },
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Send failed' }));
+        throw new Error(err.error || 'Failed to send email');
+      }
+      const data = await res.json();
+      const emailResult = data.results?.find(r => r.channel === 'email');
+      if (emailResult?.status === 'sent') {
+        setSentIds(prev => new Set([...prev, preview.id]));
+        toast.success(`Email sent to ${preview.lead.email}`);
+      } else {
+        toast.error(emailResult?.detail || 'Email was not sent — check SMTP settings');
+      }
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSendingId(null);
+    }
   };
 
   return (
@@ -193,6 +230,23 @@ export default function AIPreviewModal({ isOpen, onClose, nodeData }) {
                   {copiedId === preview.id ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
                   {copiedId === preview.id ? 'Copied!' : 'Copy'}
                 </button>
+                {preview.lead?.email && (
+                  <button
+                    onClick={() => handleSendEmail(preview)}
+                    disabled={sendingId === preview.id || sentIds.has(preview.id)}
+                    className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md transition-colors ${
+                      sentIds.has(preview.id)
+                        ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 cursor-default'
+                        : 'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:bg-blue-900/30 disabled:opacity-50'
+                    }`}
+                  >
+                    {(() => {
+                      if (sendingId === preview.id) return <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending...</>;
+                      if (sentIds.has(preview.id)) return <><CheckCircle2 className="w-3.5 h-3.5" /> Sent</>;
+                      return <><Send className="w-3.5 h-3.5" /> Send</>;
+                    })()}
+                  </button>
+                )}
               </div>
 
               {/* Email content */}
