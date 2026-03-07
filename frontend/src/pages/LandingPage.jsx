@@ -63,7 +63,12 @@ const LandingPage = () => {
   };
 
   const handleGoogleSignIn = async () => {
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({ provider: 'google' });
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`,
+      },
+    });
     if (oauthError) {
       setError(oauthError.message);
     }
