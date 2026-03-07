@@ -507,7 +507,7 @@ export async function getCurrentUserId() {
 // AI MESSAGE GENERATION
 // ──────────────────────────────────────────────
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export async function generateAIMessage({ leadId, prompt, tone, maxLength, credentialId, model, lead, companyName, senderName, industry, painPoints, callToAction, signature, language, messageType }) {
   const res = await fetch(`${API_BASE}/api/ai/generate`, {

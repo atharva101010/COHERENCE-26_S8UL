@@ -44,7 +44,7 @@ const app = express();
 const httpServer = createServer(app);
 const allowedOrigins = process.env.FRONTEND_URL
   ? [process.env.FRONTEND_URL, 'http://localhost:5173']
-  : ['http://localhost:5173'];
+  : ['http://localhost:5173', 'https://coherence-26-s8ul.onrender.com'];
 
 const io = new Server(httpServer, {
   cors: {

@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { Search, RefreshCw, Globe, Building2, Mail, User, CheckCircle } from 'lucide-react';
 import { safeJsonParse } from '../lib/utils';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API = import.meta.env.VITE_API_URL || '';
 
 export default function LeadEnrichment() {
   const [leads, setLeads] = useState([]);

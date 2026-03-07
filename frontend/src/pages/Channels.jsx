@@ -13,7 +13,7 @@ import {
   fetchChannelInbox,
 } from '../lib/supabaseService';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 const CHANNEL_CONFIG = {
   whatsapp: { label: 'WhatsApp', icon: MessageSquare, color: 'bg-emerald-500', lightBg: 'bg-emerald-50 dark:bg-emerald-900/30', text: 'text-emerald-600 dark:text-emerald-400' },
