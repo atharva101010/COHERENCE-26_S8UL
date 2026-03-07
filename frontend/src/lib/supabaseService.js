@@ -7,13 +7,6 @@
 import { supabase } from '../supabaseClient';
 import { safeJsonParse } from './utils';
 
-// Helper: get current authenticated user's ID (required for RLS)
-async function requireUserId() {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-  return user.id;
-}
-
 // ──────────────────────────────────────────────
 // LEADS
 // ──────────────────────────────────────────────
@@ -76,7 +69,6 @@ function validateLead(lead) {
 }
 
 export async function bulkImportLeads(leads) {
-  const userId = await requireUserId();
   const validLeads = [];
   let skipped = 0;
   const errors = [];
@@ -88,7 +80,7 @@ export async function bulkImportLeads(leads) {
       errors.push(result.error);
       continue;
     }
-    validLeads.push({ ...result.data, user_id: userId });
+    validLeads.push(result.data);
   }
 
   let imported = 0;
@@ -156,7 +148,6 @@ export async function fetchWorkflowById(id) {
 }
 
 export async function createWorkflow({ name, description, nodes, edges }) {
-  const userId = await requireUserId();
   const { data, error } = await supabase
     .from('workflows')
     .insert({
@@ -164,7 +155,6 @@ export async function createWorkflow({ name, description, nodes, edges }) {
       description: description || '',
       nodes: JSON.stringify(nodes || []),
       edges: JSON.stringify(edges || []),
-      user_id: userId,
     })
     .select()
     .single();
@@ -365,10 +355,9 @@ export async function fetchCredentialsByType(type) {
 }
 
 export async function createCredential({ name, type, config }) {
-  const userId = await requireUserId();
   const { data, error } = await supabase
     .from('credentials')
-    .insert({ name: name.trim(), type, config: JSON.stringify(config || {}), user_id: userId })
+    .insert({ name: name.trim(), type, config: JSON.stringify(config || {}) })
     .select()
     .single();
   if (error) throw error;
@@ -415,10 +404,9 @@ export async function fetchBlacklist() {
 }
 
 export async function addToBlacklist(email, reason) {
-  const userId = await requireUserId();
   const { data, error } = await supabase
     .from('blacklist')
-    .insert({ email, reason, user_id: userId })
+    .insert({ email, reason })
     .select()
     .single();
   if (error) throw error;
@@ -510,7 +498,10 @@ export async function deleteFile(filePath) {
 /**
  * Get current user id (returns null if not authenticated).
  */
-export { requireUserId as getCurrentUserId };
+export async function getCurrentUserId() {
+  const { data: { user } } = await supabase.auth.getUser();
+  return user?.id ?? null;
+}
 
 // ──────────────────────────────────────────────
 // AI MESSAGE GENERATION
