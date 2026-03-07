@@ -391,13 +391,9 @@ export default function AIChat() {
   };
 
   const toggleSelectAll = () => {
-    if (selectAll) {
-      setSelectedLeadIds([]);
-      setSelectAll(false);
-    } else {
-      setSelectedLeadIds(allLeads.map(l => l.id));
-      setSelectAll(true);
-    }
+    const newSelectAll = !selectAll;
+    setSelectAll(newSelectAll);
+    setSelectedLeadIds(newSelectAll ? allLeads.map(l => l.id) : []);
   };
 
   const exportBulkResults = () => {
@@ -505,11 +501,10 @@ export default function AIChat() {
     setLoading(true);
     try {
       const msgs = await fetchConversationMessages(convId);
-      if (msgs.length > 0) {
-        setMessages(msgs.map(m => ({ role: m.role, content: m.content, source: m.source || undefined })));
-      } else {
-        setMessages([WELCOME_MSG]);
-      }
+      const parsed = msgs.length > 0
+        ? msgs.map(m => ({ role: m.role, content: m.content, source: m.source || undefined }))
+        : [WELCOME_MSG];
+      setMessages(parsed);
     } catch {
       setMessages([WELCOME_MSG]);
     } finally {
@@ -542,22 +537,22 @@ export default function AIChat() {
   };
 
   const ensureConversation = async (msg) => {
-    if (activeConvId) {
-      if (messages.length <= 1) {
-        updateAIConversation(activeConvId, truncateTitle(msg))
-          .then(updated => updateConvTitle(activeConvId, updated.title))
-          .catch(() => {});
+    if (!activeConvId) {
+      try {
+        const conv = await createAIConversation(truncateTitle(msg));
+        setConversations(prev => [conv, ...prev]);
+        setActiveConvId(conv.id);
+        return conv.id;
+      } catch {
+        return null;
       }
-      return activeConvId;
     }
-    try {
-      const conv = await createAIConversation(truncateTitle(msg));
-      setConversations(prev => [conv, ...prev]);
-      setActiveConvId(conv.id);
-      return conv.id;
-    } catch {
-      return null;
+    if (messages.length <= 1) {
+      updateAIConversation(activeConvId, truncateTitle(msg))
+        .then(updated => updateConvTitle(activeConvId, updated.title))
+        .catch(() => {});
     }
+    return activeConvId;
   };
 
   const sendMessage = async (text = null) => {

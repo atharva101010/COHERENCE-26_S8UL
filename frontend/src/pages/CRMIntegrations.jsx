@@ -34,7 +34,7 @@ function SkeletonCard() {
 function formatTimestamp(ts) {
   if (!ts) return null;
   const d = new Date(ts);
-  if (isNaN(d.getTime())) return null;
+  if (Number.isNaN(d.getTime())) return null;
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' +
     d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 }
@@ -159,7 +159,7 @@ export default function CRMIntegrations() {
   };
 
   const updateConfig = (id, field, value) => {
-    setConfigs(prev => ({ ...prev, [id]: { ...(prev[id] || {}), [field]: value } }));
+    setConfigs(prev => ({ ...prev, [id]: { ...(prev[id] ?? {}), [field]: value } }));
   };
 
   const getAITip = async () => {
@@ -301,7 +301,10 @@ export default function CRMIntegrations() {
                       disabled={isSubmitting}
                       className="flex-1 py-1.5 text-xs bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-1"
                     >
-                      {isSubmitting ? <><Loader2 size={12} className="animate-spin" /> Saving...</> : isConnected ? 'Update Config' : 'Connect'}
+                      {isSubmitting
+                        ? <><Loader2 size={12} className="animate-spin" /> Saving...</>
+                        : (isConnected ? 'Update Config' : 'Connect')
+                      }
                     </button>
                     <button onClick={() => setConfiguring(null)} disabled={isSubmitting} className="px-3 py-1.5 text-xs bg-secondary text-secondary-foreground rounded-lg">Cancel</button>
                   </div>
@@ -349,14 +352,16 @@ export default function CRMIntegrations() {
             {aiLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />} {aiLoading ? 'Thinking...' : 'Get AI Tip'}
           </button>
         </div>
-        {aiError ? (
+        {aiError && (
           <div className="flex items-center gap-2">
             <p className="text-xs text-red-600 dark:text-red-400 flex-1">{aiError}</p>
             <button onClick={getAITip} className="text-xs text-violet-700 dark:text-violet-300 underline hover:text-violet-900">Retry</button>
           </div>
-        ) : aiTip ? (
+        )}
+        {!aiError && aiTip && (
           <p className="text-xs text-violet-600 dark:text-violet-400">{aiTip}</p>
-        ) : (
+        )}
+        {!aiError && !aiTip && (
           <p className="text-xs text-violet-400">Click &quot;Get AI Tip&quot; for personalized advice on maximizing your CRM integrations.</p>
         )}
       </div>

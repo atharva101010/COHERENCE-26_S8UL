@@ -1,4 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
+import PropTypes from 'prop-types';
 import { Globe } from 'lucide-react';
 
 export default function HttpRequestNode({ data, selected }) {
@@ -31,3 +32,8 @@ export default function HttpRequestNode({ data, selected }) {
     </div>
   );
 }
+
+HttpRequestNode.propTypes = {
+  data: PropTypes.object,
+  selected: PropTypes.bool,
+};

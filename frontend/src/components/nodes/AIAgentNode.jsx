@@ -1,4 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
+import PropTypes from 'prop-types';
 import { Bot } from 'lucide-react';
 
 const modelColors = {
@@ -38,3 +39,8 @@ export default function AIAgentNode({ data, selected }) {
     </div>
   );
 }
+
+AIAgentNode.propTypes = {
+  data: PropTypes.object,
+  selected: PropTypes.bool,
+};

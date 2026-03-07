@@ -1,4 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
+import PropTypes from 'prop-types';
 import { Mail } from 'lucide-react';
 
 export default function EmailNode({ data, selected }) {
@@ -25,3 +26,8 @@ export default function EmailNode({ data, selected }) {
     </div>
   );
 }
+
+EmailNode.propTypes = {
+  data: PropTypes.object,
+  selected: PropTypes.bool,
+};

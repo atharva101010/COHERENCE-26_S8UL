@@ -96,7 +96,8 @@ export default function FollowUpSequences() {
   const generateAISequence = async () => {
     setAiGenerating(true);
     try {
-      const triggerDesc = form.trigger_condition === 'no_reply' ? "leads who haven't replied" : form.trigger_condition === 'no_open' ? "leads who haven't opened emails" : 'bounced emails';
+      const triggerDescs = { no_reply: "leads who haven't replied", no_open: "leads who haven't opened emails" };
+      const triggerDesc = triggerDescs[form.trigger_condition] || 'bounced emails';
       const data = await chatWithAI({
         message: `Generate a 3-step follow-up email sequence for ${triggerDesc}. Return ONLY valid JSON (no markdown): {"name":"...","steps":[{"delay_hours":24,"action":"send_email","subject":"...","body":"..."},{"delay_hours":72,"action":"send_email","subject":"...","body":"..."},{"delay_hours":168,"action":"send_email","subject":"...","body":"..."}]}. Use {{name}} and {{company}} placeholders. Keep each body under 80 words.`,
         context: 'Follow-up sequence generation',
@@ -227,7 +228,10 @@ export default function FollowUpSequences() {
                   </div>
                   <div className="flex gap-1.5">
                     <button onClick={() => toggleStatus(seq)} disabled={togglingId === seq.id} className="p-1.5 rounded hover:bg-muted disabled:opacity-50">
-                      {togglingId === seq.id ? <Loader2 size={14} className="animate-spin" /> : seq.status === 'active' ? <Pause size={14} /> : <Play size={14} />}
+                      {togglingId === seq.id
+                        ? <Loader2 size={14} className="animate-spin" />
+                        : (seq.status === 'active' ? <Pause size={14} /> : <Play size={14} />)
+                      }
                     </button>
                     <button onClick={() => handleDelete(seq.id)} disabled={deletingId === seq.id} className="p-1.5 rounded hover:bg-red-50 dark:bg-red-900/30 text-red-500 disabled:opacity-50">
                       {deletingId === seq.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
@@ -239,7 +243,7 @@ export default function FollowUpSequences() {
                   {steps.map((step, idx) => (
                     <div key={`timeline-${idx}`} className="flex items-center gap-1">
                       <div className="bg-primary/10 text-primary px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5">
-                        <Clock size={10} /> {step.delay_hours}h \u2192 {step.action === 'send_email' ? 'Email' : step.action || 'Email'}
+                        <Clock size={10} /> {step.delay_hours}h \u2192 {step.action === 'send_email' ? 'Email' : (step.action || 'Email')}
                       </div>
                       {idx < steps.length - 1 && <ArrowRight size={12} className="text-muted-foreground" />}
                     </div>

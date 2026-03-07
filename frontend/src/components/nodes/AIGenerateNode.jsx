@@ -1,4 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
+import PropTypes from 'prop-types';
 import { Sparkles } from 'lucide-react';
 
 export default function AIGenerateNode({ data, selected }) {
@@ -25,3 +26,8 @@ export default function AIGenerateNode({ data, selected }) {
     </div>
   );
 }
+
+AIGenerateNode.propTypes = {
+  data: PropTypes.object,
+  selected: PropTypes.bool,
+};

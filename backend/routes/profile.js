@@ -22,7 +22,7 @@ const DEFAULT_PROFILE = {
 // Try to ensure profiles table exists
 async function ensureProfilesTable() {
   const { error } = await supabase.from('profiles').select('id').limit(1);
-  if (error && error.message.includes('profiles')) {
+  if (error?.message?.includes('profiles')) {
     // Table doesn't exist — try creating it via raw SQL
     const { error: rpcError } = await supabase.rpc('exec_sql', {
       query: `CREATE TABLE IF NOT EXISTS profiles (
@@ -40,10 +40,7 @@ async function ensureProfilesTable() {
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );`
     });
-    if (rpcError) {
-      return false;
-    }
-    return true;
+    return !rpcError;
   }
   return !error;
 }
@@ -66,14 +63,14 @@ router.get('/', async (req, res) => {
       .limit(1)
       .single();
 
-    if (error && (error.code === 'PGRST116' || error.message.includes('profiles'))) {
+    if (error && (error.code === 'PGRST116' || error.message?.includes('profiles'))) {
       return res.json(DEFAULT_PROFILE);
     }
     if (error) throw error;
     res.json(data);
   } catch (err) {
     // If table doesn't exist, return default gracefully
-    if (err.message && err.message.includes('profiles')) {
+    if (err.message?.includes('profiles')) {
       return res.json(DEFAULT_PROFILE);
     }
     res.status(500).json({ error: err.message });
@@ -134,7 +131,7 @@ router.put('/', async (req, res) => {
 
     res.json(result);
   } catch (err) {
-    if (err.message && err.message.includes('profiles')) {
+    if (err.message?.includes('profiles')) {
       return res.json({ ...DEFAULT_PROFILE, ...req.body, updated_at: new Date().toISOString() });
     }
     res.status(500).json({ error: err.message });

@@ -1,4 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
+import PropTypes from 'prop-types';
 import { Code } from 'lucide-react';
 
 export default function CodeNode({ data, selected }) {
@@ -25,3 +26,8 @@ export default function CodeNode({ data, selected }) {
     </div>
   );
 }
+
+CodeNode.propTypes = {
+  data: PropTypes.object,
+  selected: PropTypes.bool,
+};

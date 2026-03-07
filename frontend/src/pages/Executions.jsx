@@ -203,7 +203,7 @@ export default function Executions() {
   }, []);
 
   useEffect(() => {
-    const socket = io(import.meta.env.VITE_API_URL || window.location.origin);
+    const socket = io(import.meta.env.VITE_API_URL || globalThis.location.origin);
     socketRef.current = socket;
 
     socket.on('connect', () => setSocketConnected(true));

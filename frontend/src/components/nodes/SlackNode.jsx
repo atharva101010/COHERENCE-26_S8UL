@@ -1,4 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
+import PropTypes from 'prop-types';
 import { MessageSquare } from 'lucide-react';
 
 export default function SlackNode({ data, selected }) {
@@ -25,3 +26,8 @@ export default function SlackNode({ data, selected }) {
     </div>
   );
 }
+
+SlackNode.propTypes = {
+  data: PropTypes.object,
+  selected: PropTypes.bool,
+};

@@ -1,4 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
+import PropTypes from 'prop-types';
 import { Smartphone } from 'lucide-react';
 
 export default function SmsNode({ data, selected }) {
@@ -25,3 +26,8 @@ export default function SmsNode({ data, selected }) {
     </div>
   );
 }
+
+SmsNode.propTypes = {
+  data: PropTypes.object,
+  selected: PropTypes.bool,
+};

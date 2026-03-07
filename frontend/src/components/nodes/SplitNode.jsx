@@ -1,4 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
+import PropTypes from 'prop-types';
 import { Split } from 'lucide-react';
 
 export default function SplitNode({ data, selected }) {
@@ -25,3 +26,8 @@ export default function SplitNode({ data, selected }) {
     </div>
   );
 }
+
+SplitNode.propTypes = {
+  data: PropTypes.object,
+  selected: PropTypes.bool,
+};

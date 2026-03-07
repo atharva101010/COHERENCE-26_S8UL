@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import PropTypes from 'prop-types';
 import { Search, RefreshCw, ChevronLeft, ChevronRight, Trash2, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchLeads as fetchLeadsFromDB, updateLead, deleteLead } from '../lib/supabaseService';
@@ -33,7 +34,7 @@ function SkeletonRow() {
   );
 }
 
-function TableBody({ leads, updatingId, handleStatusChange, confirmDeleteId, setConfirmDeleteId, deletingId, handleDelete }) { // eslint-disable-line react/prop-types
+function TableBody({ leads, updatingId, handleStatusChange, confirmDeleteId, setConfirmDeleteId, deletingId, handleDelete }) {
   if (leads.length === 0) {
     return (
       <tr>
@@ -102,7 +103,7 @@ function TableBody({ leads, updatingId, handleStatusChange, confirmDeleteId, set
   ));
 }
 
-export default function LeadsTable({ refreshTrigger }) { // eslint-disable-line react/prop-types
+export default function LeadsTable({ refreshTrigger }) {
   const [leads, setLeads] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -280,3 +281,17 @@ export default function LeadsTable({ refreshTrigger }) { // eslint-disable-line 
     </div>
   );
 }
+
+TableBody.propTypes = {
+  leads: PropTypes.array.isRequired,
+  updatingId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  handleStatusChange: PropTypes.func.isRequired,
+  confirmDeleteId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  setConfirmDeleteId: PropTypes.func.isRequired,
+  deletingId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  handleDelete: PropTypes.func.isRequired,
+};
+
+LeadsTable.propTypes = {
+  refreshTrigger: PropTypes.number,
+};

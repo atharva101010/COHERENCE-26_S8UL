@@ -187,7 +187,8 @@ export default function ABTesting() {
         <div className="space-y-4">
           {tests.map(test => {
             const openRate = getWinRate(test.variant_a_opened, test.variant_b_opened);
-            const statusClass = test.status === 'running' ? 'bg-green-100 text-green-700 dark:text-green-300' : test.status === 'paused' ? 'bg-yellow-100 text-yellow-700' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400';
+            const statusClasses = { running: 'bg-green-100 text-green-700 dark:text-green-300', paused: 'bg-yellow-100 text-yellow-700' };
+            const statusClass = statusClasses[test.status] || 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400';
             return (
               <div key={test.id} className="bg-card border border-border rounded-xl p-5 space-y-4">
                 <div className="flex items-center justify-between">
@@ -197,7 +198,10 @@ export default function ABTesting() {
                   </div>
                   <div className="flex gap-1.5">
                     <button onClick={() => toggleStatus(test)} disabled={togglingId === test.id} className="p-1.5 rounded hover:bg-muted disabled:opacity-50">
-                      {togglingId === test.id ? <Loader2 size={14} className="animate-spin" /> : test.status === 'running' ? <Pause size={14} /> : <Play size={14} />}
+                      {togglingId === test.id
+                        ? <Loader2 size={14} className="animate-spin" />
+                        : (test.status === 'running' ? <Pause size={14} /> : <Play size={14} />)
+                      }
                     </button>
                     <button onClick={() => handleDelete(test.id)} disabled={deletingId === test.id} className="p-1.5 rounded hover:bg-red-50 dark:bg-red-900/30 text-red-500 disabled:opacity-50">
                       {deletingId === test.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}

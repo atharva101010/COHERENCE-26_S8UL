@@ -1,4 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
+import PropTypes from 'prop-types';
 import { Merge } from 'lucide-react';
 
 export default function MergeNode({ data, selected }) {
@@ -26,3 +27,8 @@ export default function MergeNode({ data, selected }) {
     </div>
   );
 }
+
+MergeNode.propTypes = {
+  data: PropTypes.object,
+  selected: PropTypes.bool,
+};

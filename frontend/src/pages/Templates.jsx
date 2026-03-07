@@ -67,7 +67,7 @@ export default function Templates() {
   };
 
   const handleDelete = async (id, name) => {
-    if (!window.confirm(`Delete template "${name}"? This cannot be undone.`)) return;
+    if (!globalThis.confirm(`Delete template "${name}"? This cannot be undone.`)) return;
     setDeletingId(id);
     try {
       await deleteTemplate(id);

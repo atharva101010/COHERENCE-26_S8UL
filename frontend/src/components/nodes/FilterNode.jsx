@@ -1,4 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
+import PropTypes from 'prop-types';
 import { Filter } from 'lucide-react';
 
 export default function FilterNode({ data, selected }) {
@@ -26,3 +27,8 @@ export default function FilterNode({ data, selected }) {
     </div>
   );
 }
+
+FilterNode.propTypes = {
+  data: PropTypes.object,
+  selected: PropTypes.bool,
+};

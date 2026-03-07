@@ -1,4 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
+import PropTypes from 'prop-types';
 import { GitBranch } from 'lucide-react';
 
 export default function ConditionNode({ data, selected }) {
@@ -30,3 +31,8 @@ export default function ConditionNode({ data, selected }) {
     </div>
   );
 }
+
+ConditionNode.propTypes = {
+  data: PropTypes.object,
+  selected: PropTypes.bool,
+};

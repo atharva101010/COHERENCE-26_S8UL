@@ -1,4 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
+import PropTypes from 'prop-types';
 import { UserCheck } from 'lucide-react';
 
 export default function UpdateLeadNode({ data, selected }) {
@@ -25,3 +26,8 @@ export default function UpdateLeadNode({ data, selected }) {
     </div>
   );
 }
+
+UpdateLeadNode.propTypes = {
+  data: PropTypes.object,
+  selected: PropTypes.bool,
+};

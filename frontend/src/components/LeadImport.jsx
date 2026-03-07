@@ -94,7 +94,8 @@ export default function LeadImport({ onImportComplete }) { // eslint-disable-lin
         try {
           await uploadFile(storagePath, file);
         } catch (uploadErr) {
-          // File upload to storage failed, continuing with import
+          // Storage upload is optional — import proceeds without it
+          console.warn('File upload to storage failed:', uploadErr.message);
         }
       }
 

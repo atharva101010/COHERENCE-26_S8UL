@@ -1,4 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
+import PropTypes from 'prop-types';
 import { Webhook } from 'lucide-react';
 
 export default function WebhookNode({ data, selected }) {
@@ -24,3 +25,8 @@ export default function WebhookNode({ data, selected }) {
     </div>
   );
 }
+
+WebhookNode.propTypes = {
+  data: PropTypes.object,
+  selected: PropTypes.bool,
+};

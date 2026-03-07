@@ -1,4 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
+import PropTypes from 'prop-types';
 import { CalendarClock } from 'lucide-react';
 
 export default function ScheduleNode({ data, selected }) {
@@ -24,3 +25,8 @@ export default function ScheduleNode({ data, selected }) {
     </div>
   );
 }
+
+ScheduleNode.propTypes = {
+  data: PropTypes.object,
+  selected: PropTypes.bool,
+};

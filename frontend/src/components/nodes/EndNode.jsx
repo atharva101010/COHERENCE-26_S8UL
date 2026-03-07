@@ -1,4 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
+import PropTypes from 'prop-types';
 import { Square } from 'lucide-react';
 
 export default function EndNode({ data, selected }) {
@@ -19,3 +20,8 @@ export default function EndNode({ data, selected }) {
     </div>
   );
 }
+
+EndNode.propTypes = {
+  data: PropTypes.object,
+  selected: PropTypes.bool,
+};

@@ -1,4 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
+import PropTypes from 'prop-types';
 import { FileText } from 'lucide-react';
 
 export default function SummarizerNode({ data, selected }) {
@@ -25,3 +26,8 @@ export default function SummarizerNode({ data, selected }) {
     </div>
   );
 }
+
+SummarizerNode.propTypes = {
+  data: PropTypes.object,
+  selected: PropTypes.bool,
+};

@@ -161,8 +161,8 @@ export default function Channels() {
         ...messages.map(m => [
           m.id,
           m.channel,
-          `"${(m.sender_name || '').replace(/"/g, '""')}"`,
-          `"${(m.body || '').replace(/"/g, '""').substring(0, 500)}"`,
+          `"${(m.sender_name || '').replaceAll('"', '""')}"`,
+          `"${(m.body || '').replaceAll('"', '""').substring(0, 500)}"`,
           m.created_at,
         ].join(',')),
       ].join('\n');
@@ -312,7 +312,10 @@ export default function Channels() {
                           className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 ${acc.is_active ? 'text-emerald-500 hover:bg-emerald-50 dark:bg-emerald-900/30' : 'text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
                           title={acc.is_active ? 'Active — click to disable' : 'Inactive — click to enable'}
                         >
-                          {togglingId === acc.id ? <Loader2 className="w-4 h-4 animate-spin" /> : acc.is_active ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                          {togglingId === acc.id
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : (acc.is_active ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />)
+                          }
                         </button>
                         <button
                           onClick={() => handleDeleteAccount(acc.id, acc.account_name)}

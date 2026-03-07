@@ -7,7 +7,7 @@ const router = Router();
 // ── Shared helpers ──────────────────────────────────────────
 
 const STATUS_SCORES = { new: 10, contacted: 20, replied: 35, converted: 50, bounced: -10, unsubscribed: -15 };
-const PERSONAL_DOMAINS = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com'];
+const PERSONAL_DOMAINS = new Set(['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com']);
 
 function computeTier(score) {
   if (score >= 80) return 'hot';
@@ -518,7 +518,7 @@ function buildEnrichment(lead) {
     company_domain: domain,
     enriched_at: new Date().toISOString(),
     data_completeness: calculateCompleteness(lead),
-    account_type: PERSONAL_DOMAINS.includes(domain) ? 'Personal' : 'Business',
+    account_type: PERSONAL_DOMAINS.has(domain) ? 'Personal' : 'Business',
   };
 }
 
