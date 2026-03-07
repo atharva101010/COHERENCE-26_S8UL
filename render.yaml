@@ -9,6 +9,10 @@ services:
         value: production
       - key: PORT
         value: 3001
+      - key: FRONTEND_URL
+        value: https://coherence-26-s8ul.onrender.com
+      - key: DAILY_SEND_LIMIT
+        value: 50
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
@@ -32,4 +36,10 @@ services:
       - key: DISCORD_WEBHOOK_URL
         sync: false
       - key: SLACK_WEBHOOK_URL
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_WHATSAPP_NUMBER
         sync: false
